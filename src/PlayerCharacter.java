@@ -1,7 +1,10 @@
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.util.*;
 
 
-public class PlayerCharacter {
+public final class PlayerCharacter {
     private final String name;
     private final int strength;
     private final int dexterity;
@@ -11,13 +14,13 @@ public class PlayerCharacter {
     /**
      * Creates a new character.
      */
-    public static PlayerCharacter(String name, int strength, int dexterity,
+    public PlayerCharacter(String name, int strength, int dexterity,
                                   int fortitude, GameItem[] inventory) {
         this.name = name;
         this.strength = strength;
         this.dexterity = dexterity;
         this.fortitude = fortitude;
-        this.inventory = inventory;
+        this.inventory = Arrays.copyOf(inventory, inventory.length);
     }
 
     /**
@@ -52,7 +55,7 @@ public class PlayerCharacter {
      * Returns an array of GameItem objects in the character's inventory.
      */
     public GameItem[] getInventory() {
-        return inventory;
+        return Arrays.copyOf(inventory, inventory.length);
     }
 
     /**
@@ -62,7 +65,7 @@ public class PlayerCharacter {
     public int computeTotalStrength() {
         int totalBonus = 0;
         for (GameItem item : inventory) {
-            totalBonus = totalBonus + item.getDefenseBonus();
+            totalBonus = totalBonus + item.getAttackBonus();
         }
         return strength + totalBonus;
     }
@@ -90,19 +93,75 @@ public class PlayerCharacter {
         }
         return this.fortitude + totalBonus;
     }
-}
 
+    /**
+     *
+     * @param name
+     * @param strength
+     * @param dexterity
+     * @param fortitude
+     * @param inventoryString
+     * @param itemLookup
+     * @return
+     */
+    private static PlayerCharacter createCharacterFromProps(String name, int strength, int dexterity, int fortitude,
+                                                            String inventoryString, Map<String, GameItem> itemLookup) {
+        List<GameItem> items = new ArrayList<>();
+        for (String itemName : inventoryString.split("\\s*,\\s*")) {
+            GameItem item = itemLookup.get(itemName);
+            items.add(item);
+        }
+        return new PlayerCharacter(name, strength, dexterity, fortitude, items.toArray(new GameItem[0]));
+    }
 
+    /**
+     * Given a valid and non-empty character INI file and a complete array
+     * of all possible GameItems that exist in the game (that is, you can
+     * assume that every item in a character's inventory is present in
+     * allItems), this method loads the characters from the file.
+     */
+    public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
+        List<PlayerCharacter> characters = new ArrayList<>();
+        Map<String, GameItem> itemLookup = new HashMap<>();
+        for (GameItem item : allItems) {
+            itemLookup.put(item.getName(), item);
+        }
 
-/**
- * Given a valid and non-empty character INI file and a complete array
- * of all possible GameItems that exist in the game (that is, you can
- * assume that every item in a character's inventory is present in
- * allItems), this method loads the characters from the file.
- */
-public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
-    List<PlayerCharacter> characters = new ArrayList<>();
-}
+        String name = null;
+        int strength = 0, dexterity = 0, fortitude = 0;
+        String inventoryString = null;
 
-void main() {
+        try(var reader = new BufferedReader(new FileReader(file))) {
+            for(String line = reader.readLine(); line != null; line = reader.readLine()) {
+                if (line.isEmpty()) {
+                    continue;
+                }
+                if (line.startsWith("[") && line.endsWith("]")) {
+                    characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
+                    name = line.substring(1, line.length() - 1);
+                    strength = 0;
+                    dexterity = 0;
+                    fortitude = 0;
+                    inventoryString = null;
+                } else if (line.contains("=")) {
+                    String[] parts = line.split("=", 2);
+                    String key = parts[0].trim();
+                    String value = parts[1].trim();
+                    switch (key) {
+                        case "Strength" -> strength = Integer.parseInt(value);
+                        case "Dexterity" -> dexterity = Integer.parseInt(value);
+                        case "Fortitude" -> fortitude = Integer.parseInt(value);
+                        case "Inventory" -> inventoryString = value;
+                    }
+                }
+                if (name != null) {
+                    characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return characters.toArray(new PlayerCharacter[0]);
+    }
+
 }

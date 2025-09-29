@@ -17,6 +17,19 @@ public class GameItem {
     private final int defenseBonus;
 
     /**
+     * Constructs a new GameItem.
+     */
+    public GameItem(String name, int value, int weight, int attackBonus,
+                    int agilityBonus, int defenseBonus) {
+        this.name = name;
+        this.value = value;
+        this.weight = weight;
+        this.attackBonus = attackBonus;
+        this.agilityBonus = agilityBonus;
+        this.defenseBonus = defenseBonus;
+    }
+
+    /**
      * Returns the name of the item (derived from the INI section header).
      */
     public String getName() {
@@ -59,30 +72,23 @@ public class GameItem {
     }
 
     /**
-     * Constructs a new GameItem.
-     */
-    public GameItem(String name, int value, int weight, int attackBonus,
-                    int agilityBonus, int defenseBonus) {
-        this.name = name;
-        this.value = value;
-        this.weight = weight;
-        this.attackBonus = attackBonus;
-        this.agilityBonus = agilityBonus;
-        this.defenseBonus = defenseBonus;
-    }
-
-    /**
      * Given a valid and non-empty INI file of the format described above,
      * reads all item definitions from the sections and returns an array
      * containing them.
      */
     public static GameItem[] readItems(File file) {
         List<GameItem> items = new ArrayList<>();
+        String name = null;
+        int value = 0, weight = 0, attackBonus = 0, agilityBonus = 0, defenseBonus = 0;
 
         try (var reader = new BufferedReader(new FileReader(file))) {
-            String name = null;
-            int value = 0, weight = 0, attackBonus = 0, agilityBonus = 0, defenseBonus = 0;
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                String trimmedLine = line.trim();
+
+                if (trimmedLine.isEmpty()) {
+                    continue;
+                }
+
                 if (line.startsWith("[") && line.endsWith("]")) {
                     if (name != null) {
                         items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
