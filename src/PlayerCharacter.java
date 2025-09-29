@@ -107,9 +107,11 @@ public final class PlayerCharacter {
     private static PlayerCharacter createCharacterFromProps(String name, int strength, int dexterity, int fortitude,
                                                             String inventoryString, Map<String, GameItem> itemLookup) {
         List<GameItem> items = new ArrayList<>();
-        for (String itemName : inventoryString.split("\\s*,\\s*")) {
-            GameItem item = itemLookup.get(itemName);
-            items.add(item);
+        if (inventoryString != null && inventoryString.isEmpty()) {
+            for (String itemName : inventoryString.split(",")) {
+                GameItem item = itemLookup.get(itemName);
+                items.add(item);
+            }
         }
         return new PlayerCharacter(name, strength, dexterity, fortitude, items.toArray(new GameItem[0]));
     }
@@ -133,18 +135,17 @@ public final class PlayerCharacter {
 
         try(var reader = new BufferedReader(new FileReader(file))) {
             for(String line = reader.readLine(); line != null; line = reader.readLine()) {
-                if (line.isEmpty()) {
+                String s = line.trim();
+                if (s.isEmpty()) {
                     continue;
                 }
-                if (line.startsWith("[") && line.endsWith("]")) {
+                if (s.startsWith("[") && s.endsWith("]")) {
                     characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
-                    name = line.substring(1, line.length() - 1);
-                    strength = 0;
-                    dexterity = 0;
-                    fortitude = 0;
+                    name = s.substring(1, s.length() - 1);
+                    strength = dexterity = fortitude = 0;
                     inventoryString = null;
-                } else if (line.contains("=")) {
-                    String[] parts = line.split("=", 2);
+                } else if (s.contains("=")) {
+                    String[] parts = s.split("=", 2);
                     String key = parts[0].trim();
                     String value = parts[1].trim();
                     switch (key) {
