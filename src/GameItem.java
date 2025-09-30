@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -83,16 +84,12 @@ public class GameItem {
 
         try (var reader = new BufferedReader(new FileReader(file))) {
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-                String trimmedLine = line.trim();
-
-                if (trimmedLine.isEmpty()) {
+                if (line.isEmpty()) {
                     continue;
                 }
 
                 if (line.startsWith("[") && line.endsWith("]")) {
-                    if (name != null) {
-                        items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
-                    }
+                    items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
                     name = line.substring(1, line.length()-1);
                     value = weight = attackBonus = agilityBonus = defenseBonus = 0;
                 } else if (line.contains("=")) {
@@ -120,3 +117,32 @@ public class GameItem {
     }
 }
 
+
+public class Main {
+    public static void main(String[] args) {
+        // myList is a reference type of List<Integer> interface
+        List<Integer> myList = new DoublyLinkedList<>();
+        myList.add(2);
+        myList.add(4);
+        myList.add(2);
+
+        // iterator is a reference type of Iterator<Integer> interface
+        Iterator<Integer> iterator = myList.iterator();
+        System.out.print("[");
+        while (iterator.hasNext()) {
+            var element = iterator.next();
+            if (iterator.hasNext())
+                System.out.print(element + ", ");
+            else
+                System.out.print(element);
+        }
+        System.out.println("]");
+
+        // enhanced "for" syntax (leverages iterator under the hood)
+        int elemSum = 0;
+        for (Integer element : myList) {
+            elemSum = elemSum + element;
+        }
+        System.out.println("Sum: " + elemSum);
+    }
+}

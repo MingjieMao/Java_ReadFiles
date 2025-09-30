@@ -135,19 +135,18 @@ public final class PlayerCharacter {
 
         try(var reader = new BufferedReader(new FileReader(file))) {
             for(String line = reader.readLine(); line != null; line = reader.readLine()) {
-                String s = line.trim();
-                if (s.isEmpty()) {
+                if (line.isEmpty()) {
                     continue;
                 }
-                if (s.startsWith("[") && s.endsWith("]")) {
+                if (line.startsWith("[") && line.endsWith("]")) {
                     characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
-                    name = s.substring(1, s.length() - 1);
+                    name = line.substring(1, line.length() - 1);
                     strength = dexterity = fortitude = 0;
                     inventoryString = null;
-                } else if (s.contains("=")) {
-                    String[] parts = s.split("=", 2);
-                    String key = parts[0].trim();
-                    String value = parts[1].trim();
+                } else if (line.contains("=")) {
+                    String[] parts = line.split("=", 2);
+                    String key = parts[0];
+                    String value = parts[1];
                     switch (key) {
                         case "Strength" -> strength = Integer.parseInt(value);
                         case "Dexterity" -> dexterity = Integer.parseInt(value);
