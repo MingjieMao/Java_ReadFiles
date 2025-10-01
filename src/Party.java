@@ -10,6 +10,7 @@ public class Party {
 
     /**
      * Creates a new empty Party with a given name.
+     *
      * Examples：
      * - new Party("fellowship");
      * - new Party("A");
@@ -21,6 +22,7 @@ public class Party {
 
     /**
      * Returns the name of the party (e.g., from the filename).
+     *
      * Examples：
      * - new Party("fellowship").getName() -> "fellowship"
      * - new Party("A").getName() -> "A"
@@ -32,6 +34,7 @@ public class Party {
 
     /**
      * Returns the characters who are members of this party.
+     *
      * Examples：
      * -
      */
@@ -42,6 +45,7 @@ public class Party {
     /**
      * Returns the combined attack rating of the party, calculated as the
      * sum of every member's computeTotalStrength().
+     *
      * Examples：
      * -
      */
@@ -110,6 +114,13 @@ public class Party {
     public static Party[] loadParties(PlayerCharacter[] allCharacters, File directory){
         List<Party> parties = new ArrayList<>();
 
+        /**
+         * Create a Character Lookup Map
+         *
+         * Examples：
+         * - Given allCharacters={Aragorn, Gimli},
+         *   Map will be {"Aragorn": AragornObj, "Gimli": GimliObj}
+         */
         Map<String, PlayerCharacter> lookup = new HashMap<>();
         for (PlayerCharacter player : allCharacters) {
             lookup.put(player.getName(), player);
@@ -135,6 +146,9 @@ public class Party {
                     }
                 }
 
+                /**
+                 *
+                 */
                 if (partyName != null) {
                     Party newParty = new Party(partyName);
                     String[] characterNames = membersString.split(",");
