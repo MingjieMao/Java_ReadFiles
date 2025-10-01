@@ -98,6 +98,7 @@ public class GameItem {
                         case "AttackBonus" -> attackBonus = val;
                         case "AgilityBonus" -> agilityBonus = val;
                         case "DefenseBonus" -> defenseBonus = val;
+                        default -> {}
                     }
                 }
             }

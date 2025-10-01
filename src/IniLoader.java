@@ -35,8 +35,7 @@ public final class IniLoader {
         String currentName = null;
         Map<String, String> properties = new HashMap<>();
         try(var reader = new BufferedReader(new FileReader(file))) {
-            for (String line = reader.readLine(); line != null;
-                 line = reader.readLine()) {
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                  if (line.startsWith("[") && line.endsWith(("]"))) {
                      if (currentName != null) {
                          T element = elementFactory.apply(currentName, properties);

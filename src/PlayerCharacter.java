@@ -107,7 +107,7 @@ public final class PlayerCharacter {
     private static PlayerCharacter createCharacterFromProps(String name, int strength, int dexterity, int fortitude,
                                                             String inventoryString, Map<String, GameItem> itemLookup) {
         List<GameItem> items = new ArrayList<>();
-        if (inventoryString != null && inventoryString.isEmpty()) {
+        if (inventoryString != null && !inventoryString.isEmpty()) {
             for (String itemName : inventoryString.split(",")) {
                 GameItem item = itemLookup.get(itemName);
                 items.add(item);
@@ -144,16 +144,18 @@ public final class PlayerCharacter {
                     String[] parts = line.split("=", 2);
                     String key = parts[0];
                     String value = parts[1];
+
                     switch (key) {
                         case "Strength" -> strength = Integer.parseInt(value);
                         case "Dexterity" -> dexterity = Integer.parseInt(value);
                         case "Fortitude" -> fortitude = Integer.parseInt(value);
                         case "Inventory" -> inventoryString = value;
+                        default -> {}
                     }
                 }
-                if (name != null) {
-                    characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
-                }
+            }
+            if (name != null) {
+                characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
