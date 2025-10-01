@@ -84,10 +84,6 @@ public class GameItem {
 
         try (var reader = new BufferedReader(new FileReader(file))) {
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-                if (line.isEmpty()) {
-                    continue;
-                }
-
                 if (line.startsWith("[") && line.endsWith("]")) {
                     items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
                     name = line.substring(1, line.length()-1);
@@ -114,35 +110,5 @@ public class GameItem {
         }
 
         return items.toArray(new GameItem[0]);
-    }
-}
-
-
-public class Main {
-    public static void main(String[] args) {
-        // myList is a reference type of List<Integer> interface
-        List<Integer> myList = new DoublyLinkedList<>();
-        myList.add(2);
-        myList.add(4);
-        myList.add(2);
-
-        // iterator is a reference type of Iterator<Integer> interface
-        Iterator<Integer> iterator = myList.iterator();
-        System.out.print("[");
-        while (iterator.hasNext()) {
-            var element = iterator.next();
-            if (iterator.hasNext())
-                System.out.print(element + ", ");
-            else
-                System.out.print(element);
-        }
-        System.out.println("]");
-
-        // enhanced "for" syntax (leverages iterator under the hood)
-        int elemSum = 0;
-        for (Integer element : myList) {
-            elemSum = elemSum + element;
-        }
-        System.out.println("Sum: " + elemSum);
     }
 }

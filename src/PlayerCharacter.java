@@ -135,9 +135,6 @@ public final class PlayerCharacter {
 
         try(var reader = new BufferedReader(new FileReader(file))) {
             for(String line = reader.readLine(); line != null; line = reader.readLine()) {
-                if (line.isEmpty()) {
-                    continue;
-                }
                 if (line.startsWith("[") && line.endsWith("]")) {
                     characters.add(createCharacterFromProps(name, strength, dexterity, fortitude, inventoryString, itemLookup));
                     name = line.substring(1, line.length() - 1);
