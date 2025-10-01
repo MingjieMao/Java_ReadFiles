@@ -85,31 +85,31 @@ public class GameItem {
         try (var reader = new BufferedReader(new FileReader(file))) {
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                 if (line.startsWith("[") && line.endsWith("]")) {
-                    items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
+                    if (name != null) {
+                        items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
+                    }
                     name = line.substring(1, line.length()-1);
                     value = weight = attackBonus = agilityBonus = defenseBonus = 0;
                 } else if (line.contains("=")) {
-                    String[] parts = line.split("=");
+                    String[] parts = line.split("=",2);
                     String key = parts[0];
-                    int val = Integer.parseInt(parts[1]);
+                    String val = parts[1];
                     switch (key) {
-                        case "Value" -> value = val;
-                        case "Weight" -> weight = val;
-                        case "AttackBonus" -> attackBonus = val;
-                        case "AgilityBonus" -> agilityBonus = val;
-                        case "DefenseBonus" -> defenseBonus = val;
+                        case "Value" -> value = Integer.parseInt(val);
+                        case "Weight" -> weight = Integer.parseInt(val);
+                        case "AttackBonus" -> attackBonus = Integer.parseInt(val);
+                        case "AgilityBonus" -> agilityBonus = Integer.parseInt(val);
+                        case "DefenseBonus" -> defenseBonus = Integer.parseInt(val);
                         default -> {}
                     }
                 }
             }
-
             if (name != null) {
                 items.add(new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
         return items.toArray(new GameItem[0]);
     }
 }

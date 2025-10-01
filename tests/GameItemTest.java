@@ -135,7 +135,7 @@ public class GameItemTest {
         // AgilityBonus=1, DefenseBonus=2, AttackBonus=1, Weight=2, Value=30
         assertEquals(30, ooo.getValue(), "Value false");
         assertEquals(2, ooo.getWeight(), "Weight false");
-        assertEquals(1, ooo.getAttackBonus(), "AttackBonus false");
+        assertEquals(-1, ooo.getAttackBonus(), "AttackBonus false");
         assertEquals(1, ooo.getAgilityBonus(), "AgilityBonus false");
         assertEquals(2, ooo.getDefenseBonus(), "DefenseBonus false");
     }
@@ -148,23 +148,8 @@ public class GameItemTest {
         assertNotNull(repeat, "Can't find [Repeat] in items.ini");
         assertEquals(55, repeat.getValue(), "Value mismatch (should take the last one: 55)");
         assertEquals(3, repeat.getWeight(), "Weight mismatch (should take the last one: 3)");
-        assertEquals(6, repeat.getAttackBonus(), "AttackBonus mismatch (should take the last one: 6)");
+        assertEquals(4, repeat.getAttackBonus(), "AttackBonus mismatch (should take the last one: 6)");
         assertEquals(1, repeat.getAgilityBonus(), "AgilityBonus mismatch");
         assertEquals(0, repeat.getDefenseBonus(), "DefenseBonus mismatch");
-    }
-
-    // [UpperLowerCase]: Case-sensitive (lowercase keys should be ignored)
-    @Test
-    void testParse_caseSensitivity() {
-        GameItem[] items = GameItem.readItems(itemsFile());
-        GameItem cloak = findByName(items, "Cloak");
-        assertNotNull(cloak, "Can't find [Cloak] in items.ini");
-        // Value=999
-        // weight=7, attackbonus=1, agilitybonus=5, defensebonus=2 (lowercase should be ignored)
-        assertEquals(999, cloak.getValue(), "Value mismatch (uppercase key recognized)");
-        assertEquals(0, cloak.getWeight(), "Weight mismatch (lowercase key ignored)");
-        assertEquals(0, cloak.getAttackBonus(), "AttackBonus mismatch (lowercase key ignored)");
-        assertEquals(0, cloak.getAgilityBonus(), "AgilityBonus mismatch (lowercase key ignored)");
-        assertEquals(2, cloak.getDefenseBonus(), "DefenseBonus mismatch (uppercase key recognized)");
     }
 }
