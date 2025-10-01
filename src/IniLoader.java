@@ -1,5 +1,8 @@
+import java.io.BufferedReader;
 import java.io.File;
-import java.util.Map;
+import java.io.FileReader;
+import java.io.StringReader;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -34,13 +37,7 @@ public final class IniLoader {
         try(var reader = new BufferedReader(new FileReader(file))) {
             for (String line = reader.readLine(); line != null;
                  line = reader.readLine()) {
-                 if (line.isEmpty()) {
-                     if (currentName != null) {
-                         results.add(elementFactory.apply(currentName,properties));
-                         currentName = null;
-                         properties = null;
-                     }
-                 } else if (line.startsWith("[") && line.endsWith(("]"))) {
+                 if (line.startsWith("[") && line.endsWith(("]"))) {
                      if (currentName != null) {
                          T element = elementFactory.apply(currentName, properties);
                          results.add(element);
@@ -65,28 +62,46 @@ public final class IniLoader {
         }
         return results.toArray(makeArray.apply(0));
     }
+
+    /**
+     * The same method as from Part 1, but now implemented using loadINI.
+     */
+    public static GameItem[] readItems(File file) {
+        Function<Integer, GameItem[]> makeArray = n -> new GameItem[n];
+        BiFunction<String, Map<String,String>, GameItem> elementFactory = (name, properties) -> {
+            int weight = Integer.parseInt(properties.get("Weight"));
+            int value = Integer.parseInt(properties.get("Value"));
+            int attackBonus = Integer.parseInt(properties.get("AttackBonus"));
+            int agilityBonus = Integer.parseInt(properties.get("AgilityBonus"));
+            int defenseBonus = Integer.parseInt(properties.get("DefenseBonus"));
+            return new GameItem(name, weight, value, attackBonus, agilityBonus, defenseBonus);
+        };
+        return IniLoader.loadINI(file, makeArray, elementFactory);
+    }
+
+    /**
+     * The same method as from Part 2, but now implemented using loadINI.
+     */
+    public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
+        Map<String, GameItem> byName = new HashMap<>();
+        for (GameItem item : allItems) {
+            byName.put(item.getName(), item);
+        }
+        Function<Integer, PlayerCharacter[]> makeArray = n -> new PlayerCharacter[n];
+        BiFunction<String, Map<String, String>, PlayerCharacter> elementFactory = (name, properties) -> {
+            int strength = Integer.parseInt(properties.get("Strength"));
+            int dexterity = Integer.parseInt(properties.get("Dexterity"));
+            int fortitude = Integer.parseInt(properties.get("Fortitude"));
+            String inventory = properties.get("Inventory");
+            List<GameItem> bag = new ArrayList<>();
+            for (String itemName : inventory.split(",")) {
+                GameItem item = byName.get(itemName);
+                bag.add(item);
+            }
+            return new PlayerCharacter(name, strength, dexterity, fortitude,bag.toArray(new GameItem[0]));
+        };
+        return IniLoader.loadINI(file, makeArray, elementFactory);
+    }
 }
 
-/**
- * The same method as from Part 1, but now implemented using loadINI.
- */
-public static GameItem[] readItems(File file) {
-    Function<Integer, GameItem[]> makeArray = n -> new GameItem[n];
-    BiFunction<String, Map<String,String>, GameItem> factory = (name, properties) -> {
-        int weight = Integer.parseInt(properties.get("Weight"));
-        int value = Integer.parseInt(properties.get("Value"));
-        int attackBonus = Integer.parseInt(properties.get("AttackBonus"));
-        int agilityBonus = Integer.parseInt(properties.get("AgilityBonus"));
-        int defenseBonus = Integer.parseInt(properties.get("DefenseBonus"));
-        return new GameItem(name, weight, value, attackBonus, agilityBonus, defenseBonus);
-    };
-    return IniLoader.loadINI(file, makeArray, factory);
-}
 
-/**
- * The same method as from Part 2, but now implemented using loadINI.
- */
-public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
-    Function<Integer, PlayerCharacter[]> makeArray = n -> new PlayerCharacter[n];
-    BiFunction<String, Map<String, String>, T> elementFactory = ;
-}
