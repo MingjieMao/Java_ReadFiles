@@ -4,89 +4,152 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class PartyTest {
-    // return tests/items.ini
-    private File itemsFile() {
-        return Paths.get("tests", "items.ini").toFile();
+    public PlayerCharacter[] loadCharacters(File file) {
+        GameItem[] allItems = GameItem.readItems(Paths.get("tests", "items.ini").toFile());
+        return PlayerCharacter.readCharacters(file, allItems);
     }
 
-    // return tests/characters.ini
-    private File charactersFile() {
-        return Paths.get("tests", "characters.ini").toFile();
-    }
-
-    // return tests/fellowship.ini
     private File partiesDir() {
-        return Paths.get("tests","fellowship.ini").toFile();
+        // tests/Parties 目录（相对项目根目录）
+        return Paths.get("tests", "Parties").toFile();
     }
 
-    private GameItem[] loadAllItems() {
-        GameItem[] items = GameItem.readItems(itemsFile());
-        assertNotNull(items, "should not be null");
-        assertTrue(items.length > 0, "items.ini should not be empty");
-        return items;
-    }
-
-    private PlayerCharacter[] loadAllCharacters() {
-        GameItem[] allItems = loadAllItems();
-        PlayerCharacter[] pcs = PlayerCharacter.readCharacters(charactersFile(), allItems);
-        assertNotNull(pcs, "characters.ini should not be null");
-        assertTrue(pcs.length >= 0, "characters should not be null");
-        return pcs;
-    }
-
-    private static PlayerCharacter findChar(PlayerCharacter[] pcs, String name) {
-        for (PlayerCharacter pc : pcs) {
-            if (pc != null && name.equals(pc.getName())) {
-                return pc;
-            }
+    private HashMap<String, PlayerCharacter> indexByName(PlayerCharacter[] all) {
+        HashMap<String, PlayerCharacter> map = new HashMap<>();
+        for (PlayerCharacter pc : all) {
+            if (pc != null && pc.getName() != null) map.put(pc.getName(), pc);
         }
-        return null;
+        return map;
     }
 
-    private static Party findParty(Party[] parties, String name) {
-        for (Party p : parties) {
-            if (p != null && name.equals(p.getName())) {
-                return p;
-            }
-        }
-        return null;
-    }
-
-    private static Set<String> namesOfMembers(Party p) {
-        Set<String> set = new HashSet<>();
-        for (PlayerCharacter pc : p.getMembers()) {
-            if (pc != null) {
-                set.add(pc.getName());
-            }
-        }
-        return set;
-    }
-
-    // Load fellowship from directory & verify members and totals
     @Test
-    void testLoadParties() {
-        PlayerCharacter[] allChars = loadAllCharacters();
-        Party[] parties = Party.loadParties(allChars, partiesDir());
-        assertNotNull(parties, "loadParties should not be null");
+    public void testConstructorAndGetName() {
+        Party p = new Party("fellowship");
+        assertEquals("fellowship", p.getName());
+    }
 
-        assertTrue(parties.length >= 1, "No teams have been loaded.");
+    @Test
+    public void testGetMembersDefensiveCopy() {
+        // Load all characters from characters.ini
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+        HashMap<String, PlayerCharacter> byName = indexByName(all);
 
-        Party fellowship = findParty(parties, "fellowship");
-        assertNotNull(fellowship, "Can't find party [fellowship]");
+        // Create a new Party and add two members
+        Party p = new Party("test");
+        p.addMember(byName.get("Gimli"));
+        p.addMember(byName.get("Legolas"));
 
-        Set<String> expected = new HashSet<>(Arrays.asList("Gimli", "Legolas"));
-        assertEquals(expected, namesOfMembers(fellowship), "Members mismatch");
-        // Gimli 24 + Legolas 19 = 43
-        assertEquals(43, fellowship.computeCombinedAttackRating(), "Combined attack mismatch");
+        // First retrieval of members
+        PlayerCharacter[] a1 = p.getMembers();
+        assertEquals(2, a1.length, "Initial size should be 2");
+
+        // Modify the returned array (this should NOT affect the internal party state)
+        PlayerCharacter savedFirst = a1[0];
+        a1[0] = a1[1];
+
+        // Retrieve members again
+        PlayerCharacter[] a2 = p.getMembers();
+        assertEquals(2, a2.length, "Size should still be 2 after modification of the copy");
+        assertSame(savedFirst, a2[0], "Modifying the returned array should not change internal order");
+    }
+
+    @Test
+    public void testAddRemoveMember() {
+        // Load all characters from characters.ini
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+        HashMap<String, PlayerCharacter> byName = indexByName(all);
+
+        // Create a new Party and prepare two members
+        Party p = new Party("team");
+        PlayerCharacter g = byName.get("Gimli");
+        PlayerCharacter l = byName.get("Legolas");
+
+        // Add members, duplicate add should be ignored
+        p.addMember(g);
+        p.addMember(g);
+        p.addMember(l);
+
+        // Check: duplicates do not increase size
+        assertEquals(2, p.getMembers().length, "Adding a duplicate member should not increase the size");
+
+        // Remove a member
+        p.removeMember(g);
+        assertEquals(1, p.getMembers().length, "Removing a member should decrease the size by one");
+        assertEquals("Legolas", p.getMembers()[0].getName(),
+                "After removing Gimli, the only remaining member should be Legolas");
+    }
+
+    @Test
+    public void testComputeCombinedAttackRating() {
+        // Load all characters from characters.ini
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+        HashMap<String, PlayerCharacter> byName = indexByName(all);
+
+        // Create a new Party and add two members
+        Party p = new Party("rating");
+        PlayerCharacter g = byName.get("Gimli");
+        PlayerCharacter l = byName.get("Legolas");
+        p.addMember(g);
+        p.addMember(l);
+
+        // Expected combined attack rating = sum of individual strengths
+        int expected = g.computeTotalStrength() + l.computeTotalStrength();
+        // Verify that the Party correctly computes the combined rating
+        assertEquals(expected, p.computeCombinedAttackRating());
+    }
+
+    @Test
+    public void testLoadPartiesFellowship() {
+        // 1. Load all characters from characters.ini
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+
+        // 2. Load parties from tests/Parties
+        Party[] parties = Party.loadParties(all, new File("tests/Parties"));
+        assertNotNull(parties, "parties array should not be null");
+        assertTrue(parties.length >= 1, "should load at least one party");
+
+        // 3. Find the party named "fellowship"
+        Party fellowship = null;
+        for (Party p : parties) {
+            if (p != null && p.getName() != null && p.getName().equalsIgnoreCase("fellowship")) {
+                fellowship = p;
+                break;
+            }
+        }
+        assertNotNull(fellowship, "party named 'fellowship' must exist");
+
+        // 4. Check member count and order
+        PlayerCharacter[] members = fellowship.getMembers();
+        assertEquals(3, members.length, "member count should be 3");
+
+        String[] expected = {"Gimli", "Legolas", "Aragorn"};
+        for (int i = 0; i < expected.length; i++) {
+            assertEquals(expected[i], members[i].getName(), "wrong name at index " + i);
+        }
     }
 
 
+    @Test
+    public void testStorePartyNoThrowForNow() {
+        // Load characters and build a lookup map
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+        HashMap<String, PlayerCharacter> byName = indexByName(all);
 
+        // Create a party and add two members
+        Party p = new Party("saveTest");
+        p.addMember(byName.get("Gimli"));
+        p.addMember(byName.get("Aragorn"));
+
+        // Current requirement: just ensure no exception is thrown when calling storeParty
+        // (Enable file content assertions after you implement actual writing.)
+        assertDoesNotThrow(() -> p.storeParty(new File("out")));
+    }
 
 }

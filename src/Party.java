@@ -78,9 +78,12 @@ public class Party {
         File file = new File(directory, name + ".ini");
         StringBuilder sb = new StringBuilder();
         for (int i=0; i < members.size(); i++) {
-            sb.append(members.get(i).getName());
-            if (i < members.size()-1) {
-                sb.append(",");
+            PlayerCharacter pc = members.get(i);
+            if (pc != null) {
+                sb.append(pc.getName());
+                if (i < members.size() - 1) {
+                    sb.append(",");
+                }
             }
         }
         String memberString = sb.toString();
@@ -114,7 +117,7 @@ public class Party {
 
     private static Party loadOnePartyFromIniFile(File ini, HashMap<String, PlayerCharacter> byName) {
         String partyNameFromFile = null;
-        List<String> memberNames = new ArrayList<>();
+        Map<Integer, String> memberMap = new HashMap<>();
         String currentSection = "";
 
         try (BufferedReader reader = new BufferedReader(new FileReader(ini))) {
@@ -130,7 +133,9 @@ public class Party {
                         if ("Party".equalsIgnoreCase(currentSection)) {
                             if ("Name".equalsIgnoreCase(key)) partyNameFromFile = val;
                         } else if ("Members".equalsIgnoreCase(currentSection)) {
-                            memberNames.add(val);
+                            // assume key is number（0,1,2...）
+                            int idx = Integer.parseInt(key);
+                            memberMap.put(idx, val);
                         }
                     }
                 }
@@ -138,10 +143,12 @@ public class Party {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
         Party p = new Party(partyNameFromFile);
-        for (String nm : memberNames) {
-            PlayerCharacter pc = byName.get(nm);
+        List<Integer> keys = new ArrayList<>(memberMap.keySet());
+        Collections.sort(keys);  // 按数字大小排序
+        for (Integer idx : keys) {
+            String name = memberMap.get(idx);
+            PlayerCharacter pc = byName.get(name);
             if (pc != null) {
                 p.members.add(pc);
             }
