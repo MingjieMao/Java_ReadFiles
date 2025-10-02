@@ -4,7 +4,7 @@ time-on-task:
   - task: "Part 2"
     time: 180
   - task: "Part 3"
-    time: 120
+    time: 180
   - task: "Part 4"
     time: 140
 sessions:
@@ -44,4 +44,7 @@ sessions:
   - start: 2025-10-02 13:30
     end: 2025-10-02 14:30
     notes: "write tests for part 2"
+  - start: 2025-10-02 14:30
+    end: 2025-10-02 15:30
+    notes: "write tests for part 3"
 

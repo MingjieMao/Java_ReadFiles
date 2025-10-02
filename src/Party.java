@@ -115,7 +115,11 @@ public class Party {
             lookup.put(player.getName(), player);
         }
 
-        File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".ini"));
+        File[] files = (directory == null) ? null
+                                           : directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".ini"));
+        if (files == null) {
+            return new Party[0];
+        }
         for (File file : files) {
             String partyName = null;
             String membersString = null;
@@ -126,7 +130,6 @@ public class Party {
                         String[] parts = line.split("=", 2);
                         String key = parts[0];
                         String value = parts[1];
-
                         if (key.equals("Name")) {
                             partyName = value;
                         } else if (key.equals("Members")) {
@@ -134,14 +137,16 @@ public class Party {
                         }
                     }
                 }
-
                 if (partyName != null) {
                     Party newParty = new Party(partyName);
-                    String[] characterNames = membersString.split(",");
-                    for (String charName : characterNames) {
-                        PlayerCharacter character = lookup.get(charName);
-                        newParty.addMember(character);
+                    if (membersString != null && !membersString.isEmpty()) {
+                        String[] characterNames = membersString.split(",");
+                        for (String charName : characterNames) {
+                            PlayerCharacter character = lookup.get(charName);
+                            newParty.addMember(character);
+                        }
                     }
+                    parties.add(newParty);
                 }
             } catch(Exception e) {
                 throw new RuntimeException(e);

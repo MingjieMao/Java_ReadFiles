@@ -67,9 +67,9 @@ public class PlayerCharacterTest {
     @Test
     void testGimli() {
         // [Gimli]: Strength=18, Dexterity=12, Fortitude=30, Inventory=Battle Axe,Chainmail,Health Potion
-        // [Battle Axe]: Value=80, Weight=8, AttackBonus=6, AgilityBonus=-2
-        // [Chainmail]: Value=60, Weight=15, AgilityBonus=-3, DefenseBonus=4
-        // [Health Potion]: Value=50, Weight=1
+        // [Battle Axe]: AttackBonus=6, AgilityBonus=-2
+        // [Chainmail]: AgilityBonus=-3, DefenseBonus=4
+        // [Health Potion]: 0
         GameItem[] all = loadAllItems();
         PlayerCharacter[] pcs = loadAllChars(all);
         PlayerCharacter g = findByName(pcs, "Gimli");
@@ -129,4 +129,40 @@ public class PlayerCharacterTest {
         assertEquals(9, d.computeTotalFortitude(), "Total Fortitude should equal base");
     }
 
+    @Test
+    void testPotionTester() {
+        // [PotionTester]: Strength=5, Dexterity=5, Fortitude=5, Inventory=Health Potion,Health Potion,Wooden Shield
+        // [Health Potion]: 0
+        // [Wooden Shield]: AttackBonus=-7, AgilityBonus=-1, DefenseBonus=5
+        GameItem[] all = loadAllItems();
+        PlayerCharacter[] pcs = loadAllChars(all);
+        PlayerCharacter p = findByName(pcs, "PotionTester");
+        assertNotNull(p, "Can't find [PotionTester]");
+        assertEquals(3, p.getInventory().length, "Should have 3 entries");
+        // Base(5,5,5) + Shield(-7,-1,+5)
+        assertEquals(-2, p.computeTotalStrength(), "Total Strength mismatch");
+        assertEquals(4,  p.computeTotalDexterity(), "Total Dexterity mismatch");
+        assertEquals(10, p.computeTotalFortitude(), "Total Fortitude mismatch");
+    }
+
+    @Test
+    void testOrderFree() {
+        // [OrderFree]: Dexterity=3, Inventory=Elven Cloak, Strength=2, Fortitude=4
+        // [Elven Cloak]: AgilityBonus=3, DefenseBonus=1
+        GameItem[] all = loadAllItems();
+        PlayerCharacter[] pcs = loadAllChars(all);
+        PlayerCharacter o = findByName(pcs, "OrderFree");
+        assertNotNull(o, "Can't find [OrderFree]");
+
+        Set<String> expected = new HashSet<>(Arrays.asList("Elven Cloak"));
+        assertEquals(expected, namesOf(o.getInventory()), "Inventory mismatch");
+
+        assertEquals(2, o.getStrength(),  "Base Strength mismatch");
+        assertEquals(3, o.getDexterity(), "Base Dexterity mismatch");
+        assertEquals(4, o.getFortitude(), "Base Fortitude mismatch");
+        // Totals: Str=2+0=2, Dex=3+3=6, Fort=4+1=5
+        assertEquals(2, o.computeTotalStrength(),  "Total Strength mismatch");
+        assertEquals(6, o.computeTotalDexterity(), "Total Dexterity mismatch");
+        assertEquals(5, o.computeTotalFortitude(), "Total Fortitude mismatch");
+    }
 }
