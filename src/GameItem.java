@@ -172,12 +172,16 @@ public class GameItem {
      * reads all item definitions from the sections and returns an array
      * containing them.
      * Examples:
-     * - Given: file with two sections [A], [B]
-     *   Expect: returns array of length 2
-     * - Given: file with one section [Health Potion]
-     *   Expect: returns array of length 1
+     * - Given: File content (single section) — returns length 1：
+     *          [Health Potion]
+     *          Weight=1
+     *          AttackBonus=0
+     *          AgilityBonus=0
+     *          DefenseBonus=0
+     *   Expect: GameItem[] length == 1
+     *           index 0: name="Health Potion", value=50, weight=1, attackBonus=0, agilityBonus=0, defenseBonus=0
      *
-     * Design Strategy: Iteration + Case Distinction.
+     * Design Strategy: Iteration
      *
      * Effects: reads from the provided file (I/O).
      *
@@ -234,11 +238,11 @@ public class GameItem {
      * adding a completed GameItem to the list when a new section is encountered.
      *
      * Examples:
-     * - Given: line="[Wooden Shield]" and props.name="Health Potion"
-     *   Expect: adds GameItem("Health Potion", props.value, props.weight, props.attackBonus, props.agilityBonus,
-     *           props.defenseBonus) to items; sets props.name="Wooden Shield" and resets stats to 0
-     * - Given: line="Weight=10"
-     *   Expect: sets props.weight=10 (other fields unchanged)
+     * - Before: items = [ GameItem("Health Potion", 50, 1, 0, 0, 0) ]
+     *           props = { name="Wooden Shield", value=0, weight=10, attackBonus=0, agilityBonus=0, defenseBonus=0 }
+     *           line  = "DefenseBonus=5"
+     *   After: items = [ GameItem("Health Potion", 50, 1, 0, 0, 0) ] // unchanged
+     *          props = { name="Wooden Shield", value=0, weight=10, attackBonus=0, agilityBonus=0, defenseBonus=5 }
      *
      * Design Strategy: Case Distinction.
      *
