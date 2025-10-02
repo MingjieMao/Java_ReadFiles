@@ -6,7 +6,7 @@ import java.util.*;
  */
 public class Party {
     private final String name;
-    private final List<PlayerCharacter> members = new ArrayList<>();
+    private final List<PlayerCharacter> members;
 
     /**
      * Creates a new empty Party with a given name.
@@ -17,6 +17,7 @@ public class Party {
      */
     public Party(String name) {
         this.name = name;
+        this.members = new ArrayList<>();
     }
 
     /**
@@ -57,7 +58,7 @@ public class Party {
      * Adds a character to the party.
      */
     public void addMember(PlayerCharacter character) {
-        if (character != null) {
+        if (!members.contains(character)) {
             members.add(character);
         }
     }
@@ -83,17 +84,6 @@ public class Party {
             }
         }
         String memberString = sb.toString();
-
-        try(var writer = new BufferedWriter(new FileWriter(file))) {
-            writer.write("[Party]");
-            writer.newLine();
-            writer.write("Name=" + this.name);
-            writer.newLine();
-            writer.write("Members=" + memberString);
-            writer.newLine();
-        } catch(Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /**
@@ -108,51 +98,55 @@ public class Party {
      * @return An array of Party objects loaded from the directory.
      */
     public static Party[] loadParties(PlayerCharacter[] allCharacters, File directory){
-        List<Party> parties = new ArrayList<>();
-
-        Map<String, PlayerCharacter> lookup = new HashMap<>();
-        for (PlayerCharacter player : allCharacters) {
-            lookup.put(player.getName(), player);
+        HashMap<String, PlayerCharacter> byName = new HashMap<>();
+        for (PlayerCharacter pc : allCharacters) {
+            if (pc != null && pc.getName() != null) byName.put(pc.getName(), pc);
         }
 
-        File[] files = (directory == null) ? null
-                                           : directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".ini"));
-        if (files == null) {
-            return new Party[0];
+        File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".ini"));
+        List<Party> out = new ArrayList<>();
+        for (File f : files) {
+            Party p = loadOnePartyFromIniFile(f, byName);
+            if (p != null) out.add(p);
         }
-        for (File file : files) {
-            String partyName = null;
-            String membersString = null;
+        return out.toArray(new Party[0]);
+    }
 
-            try (var reader = new BufferedReader(new FileReader(file))) {
-                for(String line = reader.readLine(); line != null; line = reader.readLine()) {
-                    if (line.contains("=")) {
-                        String[] parts = line.split("=", 2);
-                        String key = parts[0];
-                        String value = parts[1];
-                        if (key.equals("Name")) {
-                            partyName = value;
-                        } else if (key.equals("Members")) {
-                            membersString = value;
+    private static Party loadOnePartyFromIniFile(File ini, HashMap<String, PlayerCharacter> byName) {
+        String partyNameFromFile = null;
+        List<String> memberNames = new ArrayList<>();
+        String currentSection = "";
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(ini))) {
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+
+                if (line.startsWith("[") && (line.endsWith("]"))) {
+                    currentSection = (line.substring(1, (line.length() - 1)));
+                } else {
+                    int eq = line.indexOf('=');
+                    if (eq >= 0) {
+                        String key = line.substring(0, eq);
+                        String val = line.substring(eq + 1);
+                        if ("Party".equalsIgnoreCase(currentSection)) {
+                            if ("Name".equalsIgnoreCase(key)) partyNameFromFile = val;
+                        } else if ("Members".equalsIgnoreCase(currentSection)) {
+                            memberNames.add(val);
                         }
                     }
                 }
-                if (partyName != null) {
-                    Party newParty = new Party(partyName);
-                    if (membersString != null && !membersString.isEmpty()) {
-                        String[] characterNames = membersString.split(",");
-                        for (String charName : characterNames) {
-                            PlayerCharacter character = lookup.get(charName);
-                            newParty.addMember(character);
-                        }
-                    }
-                    parties.add(newParty);
-                }
-            } catch(Exception e) {
-                throw new RuntimeException(e);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        Party p = new Party(partyNameFromFile);
+        for (String nm : memberNames) {
+            PlayerCharacter pc = byName.get(nm);
+            if (pc != null) {
+                p.members.add(pc);
             }
         }
-        return parties.toArray(new Party[0]);
+        return p;
     }
 }
 
