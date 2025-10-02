@@ -152,7 +152,18 @@ public final class PlayerCharacter {
 
     /**
      * Returns the character's total strength, calculated as base Strength
-     * plus the sum of AttackBonus from all items in their inventory.
+     *  plus the sum of AttackBonus from all items in their inventory.
+     *
+     * Examples:
+     * - Given items:
+     *     Sword: AttackBonus=+3, AgilityBonus=0,  DefenseBonus=0
+     *     Dagger: AttackBonus=+1, AgilityBonus=+1, DefenseBonus=0
+     *     PC("Alice", strength=12, ..., inventory=[Sword, Dagger])
+     *   Expect: 12 + (3 + 1) = 16
+     *
+     * Design Strategy: Iteration
+     *
+     * @return total strength as an int
      */
     public int computeTotalStrength() {
         int totalBonus = 0;
@@ -165,6 +176,17 @@ public final class PlayerCharacter {
     /**
      * Returns the character's total dexterity calculated as base Dexterity
      * plus the sum of AgilityBonus from all items in their inventory.
+     *
+     * Examples:
+     * - Items:
+     *     Elven Cloak: AgilityBonus=+3
+     *     Boots:       AgilityBonus=+2
+     *     PC("Rin", dexterity=5, inventory=[Elven Cloak, Boots])
+     *   Expect: 5 + (3 + 2) = 10
+     *
+     * Design Strategy: Iteration
+     *
+     * @return total dexterity as an int
      */
     public int computeTotalDexterity() {
         int totalBonus = 0;
@@ -177,6 +199,16 @@ public final class PlayerCharacter {
     /**
      * Returns the character's total fortitude calculated as base Fortitude
      * plus the sum of DefenseBonus from all items in their inventory.
+     *
+     * Examples:
+     * - Given Items: Wooden Shield: DefenseBonus=+5
+     *          Iron Helm:     DefenseBonus=+2
+     *          PC("Baldur", fortitude=4, inventory=[Wooden Shield, Iron Helm])
+     *   Expect: 4 + (5 + 2) = 11
+     *
+     * Design Strategy: Iteration
+     *
+     * @return total fortitude as an int
      */
     public int computeTotalFortitude() {
         int totalBonus = 0;
@@ -187,14 +219,25 @@ public final class PlayerCharacter {
     }
 
     /**
+     * Creates a PlayerCharacter from parsed properties and an item lookup.
      *
-     * @param name
-     * @param strength
-     * @param dexterity
-     * @param fortitude
-     * @param inventoryString
-     * @param itemLookup
-     * @return
+     * Examples:
+     * - Given: name="Alice", strength=12, dex=5, fort=3, inventoryString="Sword,Dagger"
+     *            itemLookup: {"Sword"->SwordItem, "Dagger"->DaggerItem}
+     *   Expect: returns new PlayerCharacter("Alice", 12, 5, 3, [SwordItem, DaggerItem])
+     *
+     * - Given: name="Lonely", strength=1, dex=1, fort=1, inventoryString=null
+     *   Expect: returns new PlayerCharacter("Lonely", 1, 1, 1, [])
+     *
+     * Design Strategy: Iteration
+     *
+     * @param name             character name parsed from section header
+     * @param strength         parsed base Strength
+     * @param dexterity        parsed base Dexterity
+     * @param fortitude        parsed base Fortitude
+     * @param inventoryString  comma-separated item names, e.g., "Sword,Dagger"
+     * @param itemLookup       map from item name to {@code GameItem}
+     * @return a new PlayerCharacter built from the given properties
      */
     private static PlayerCharacter createCharacterFromProps(String name, int strength, int dexterity, int fortitude,
                                                             String inventoryString, Map<String, GameItem> itemLookup) {
@@ -213,6 +256,33 @@ public final class PlayerCharacter {
      * of all possible GameItems that exist in the game (that is, you can
      * assume that every item in a character's inventory is present in
      * allItems), this method loads the characters from the file.
+     *
+     * Examples:
+     * - Given: File content with two sections:
+     *    [Alice]
+     *    Strength=12
+     *    Dexterity=5
+     *    Fortitude=3
+     *    Inventory=Sword,Dagger
+     *
+     *    [Bob]
+     *    Strength=8
+     *    Dexterity=9
+     *    Fortitude=10
+     *    Inventory=Wooden Shield
+     *
+     *    Expect: returns PlayerCharacter[] length == 2:
+     *            [0]: name="Alice", strength=12, dexterity=5, fortitude=3, inventory=[Sword, Dagger]
+     *            [1]: name="Bob",   strength=8,  dexterity=9, fortitude=10, inventory=[Wooden Shield]
+     *
+     * Design Strategy: Iteration
+     *
+     * Effects: opens and reads the file line-by-line (file input).
+     *
+     * @param file     character INI file to load
+     * @param allItems complete list of all possible items in the game
+     * @return array of PlayerCharacter, one per section in the file
+     * @throws RuntimeException wraps any exception during I/O or parsing
      */
     public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
         List<PlayerCharacter> characters = new ArrayList<>();
@@ -237,6 +307,19 @@ public final class PlayerCharacter {
         return characters.toArray(new PlayerCharacter[0]);
     }
 
+    /**
+     * Mutable holder for the properties of the character currently being parsed.
+     *
+     * Examples:
+     * - Given: [Alice]
+     *          Strength=12
+     *          Inventory=Sword,Dagger
+     *   Expect: props == { name="Alice", strength=12, dexterity=0, fortitude=0, inventoryString="Sword,Dagger" }
+     *
+     * @implSpec Invariants:
+     *   1. If {@code name != null}, fields represent the in-progress section.
+     *   2. {@link #resetStats()} sets strength, dexterity, fortitude to 0 (name unchanged).
+     */
     private static final class CharProps {
         String name = null;
         int strength = 0, dexterity = 0, fortitude = 0;
@@ -245,6 +328,40 @@ public final class PlayerCharacter {
         void resetStats() { strength = dexterity = fortitude = 0; }
     }
 
+    /**
+     * Parses a single line of the character INI; on a new section header, commits the previous character.
+     *
+     * Examples:
+     * - Given: characters=[], props={name=null, strength=0, dexterity=0, fortitude=0, inventoryString=null}
+     *          line="[Alice]"
+     *   Expect: characters=[]
+     *           props={name="Alice", strength=0, dexterity=0, fortitude=0, inventoryString=null}
+     *
+     * - Given: Key=value line "Strength=12":
+     *          props={name="Alice", strength=0, dexterity=0, fortitude=0, inventoryString=null}
+     *   Expect: props={name="Alice", strength=12, dexterity=0, fortitude=0, inventoryString=null}
+     *
+     * - Given: Key=value line "Inventory=Sword,Dagger":
+     *          props={name="Alice", strength=12, dexterity=5, fortitude=3, inventoryString=null}
+     *   Expect: props={name="Alice", strength=12, dexterity=5, fortitude=3, inventoryString="Sword,Dagger"}
+     *
+     * - Given: characters=[], props={name="Alice", strength=12, dexterity=5, fortitude=3, inventoryString="Sword,Dagger"}
+     *          line="[Bob]"
+     *   Expect: characters=[ createCharacterFromProps("Alice",12,5,3,"Sword,Dagger", itemLookup) ]
+     *           props={name="Bob", strength=0, dexterity=0, fortitude=0, inventoryString=null}
+     *
+     * Design Strategy: Case Distinction
+     *
+     * Effects:
+     * - On header: may append exactly one PlayerCharacter to {@code characters}.
+     * - On key=value: updates exactly one field in {@code props}.
+     *
+     * @param line        one raw line from the INI, e.g., "[Alice]" or "Strength=12"
+     * @param characters  output list to receive committed characters
+     * @param itemLookup  item lookup for building inventories
+     * @param props       mutable in-progress state for the current section
+     * @throws NumberFormatException if a numeric value cannot be parsed
+     */
     private static void parseCharacterLine(String line, List<PlayerCharacter> characters,
                                            Map<String, GameItem> itemLookup, CharProps props) {
         if (line.startsWith("[") && line.endsWith("]")) {
@@ -269,5 +386,4 @@ public final class PlayerCharacter {
             }
         }
     }
-
-    }
+}

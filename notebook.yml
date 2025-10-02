@@ -2,7 +2,7 @@ time-on-task:
   - task: "Part 1"
     time: 280
   - task: "Part 2"
-    time: 240
+    time: 280
   - task: "Part 3"
     time: 180
   - task: "Part 4"
@@ -51,6 +51,8 @@ sessions:
     end: 2025-10-02 23:00
     notes: "write annotation for part 1"
   - start: 2025-10-02 23:50
-    end: 2025-10-03 1:50
+    end: 2025-10-03 00:50
     notes: "write annotation for part 2"
-
+  - start: 2025-10-03 00:50
+    end: 2025-10-03 01:30
+    notes: "continue write annotation for part 2"
