@@ -77,10 +77,8 @@ public final class IniLoader {
 
         // Read file line by line until end of file (line == null).
         try(var reader = new BufferedReader(new FileReader(file))) {
-            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                 parseAllLines(reader, state);
                 state.commitSection();
-            }
         } catch(Exception e) {
             throw new RuntimeException(e);  // Wrap any I/O or parsing errors into RuntimeException.
         }
@@ -89,12 +87,37 @@ public final class IniLoader {
     }
 
     /**
-     * Parses all lines from the INI file and updates state accordingly.
+     * Parses all lines from the INI file and updates parsing state accordingly.
+     * Examples:
+     * - Given file:
+     *      [A]
+     *      k1=v1
+     *      [B]
+     *      k2=v2
+     *   Expect:
+     *      - Line "[A]"  -> state.currentName = "A"
+     *      - Line "k1=v1" -> state.properties = {"k1":"v1"}
+     *      - Line "[B]"  -> commitSection("A"), start new section "B"
+     *      - Line "k2=v2" -> state.properties = {"k2":"v2"}
+     * Design Strategy: Iteration and Case Distinction
+     * Effects:
+     * - Mutates {@code state}: may update {@code currentName}, {@code properties}, and
+     *   append committed sections into {@code results}.
+     * - Does not close {@code reader} (caller manages resource).
      *
-     * @param reader
-     * @param state
-     * @param <T>
-     * @throws IOException
+     * @param reader BufferedReader positioned at the start of the INI file
+     * @param state mutable parsing state (tracks current section and accumulated results)
+     * @param <T> element type returned by elementFactory
+     * @throws IOException if an error occurs during line reading
+     * @implSpec
+     * Invariant:
+     * - {@code state.currentName} is the most recent section header (if any);
+     * - {@code state.properties} stores key→value pairs for that section.
+     * Precondition:
+     * {@code reader} and {@code state} are non-null.
+     * Postcondition:
+     * - At end-of-file, the last section is not automatically committed;
+     * - caller (e.g., {@code loadINI}) must call {@code state.commitSection()}.
      */
     private static <T> void parseAllLines(BufferedReader reader, IniState<T> state) throws IOException {
         for (String line = reader.readLine(); line != null; line = reader.readLine()) {
@@ -119,7 +142,25 @@ public final class IniLoader {
 
     /**
      * State holder for parsing one INI file.
-     * @param <T>
+     * Example:
+     * - Start parsing: {@code currentName = null}, {@code properties = {}}.
+     * - After reading "[Sword]": {@code currentName = "Sword"}.
+     * - After reading "Weight=10": {@code properties = {"Weight":"10"}}.
+     * - When calling {@code commitSection()}, a new T is constructed and added
+     *   to {@code results}, then state resets for the next section.
+     * Design Strategy: Simple Expression
+     *
+     * @param <T> element type constructed from each section
+     * @implSpec
+     * Invariants:
+     * - {@code currentName} is either null or the last seen section header.
+     * - {@code properties} contains key→value pairs only for the current section.
+     * - {@code results} grows monotonically (elements only added, never removed).
+     * Pre-conditions:
+     * - {@code elementFactory} must be non-null and accept valid input.
+     * Postconditions:
+     * - After {@code commitSection()}, if {@code currentName != null}, one new
+     *   element is appended to {@code results} and state resets.
      */
     private static class IniState<T> {
         final BiFunction<String, Map<String, String>, T> elementFactory;
@@ -131,18 +172,25 @@ public final class IniLoader {
             this.elementFactory = elementFactory;
         }
 
+        /**
+         * Commits the current section: build element and reset state.
+         * Effects:
+         * - If {@code currentName != null}, constructs one element and appends to {@code results}.
+         * - Resets {@code currentName = null} and {@code properties = new LinkedHashMap<>}.
+         *
+         * @implSpec
+         * - Precondition: {@code elementFactory} must not be null.
+         * - Postcondition: If {@code currentName} was non-null, then
+         *   {@code results.size()} increases by 1.
+         */
         void commitSection() {
             if (currentName != null) {
-                // Build element and add to results
-                T element = elementFactory.apply(currentName, properties);
+                T element = elementFactory.apply(currentName, properties);  // Build element and add to results
                 results.add(element);
-                // Reset for next section
-                currentName = null;
-                properties = new LinkedHashMap<>();
+                properties = new LinkedHashMap<>(); // Reset properties map for the next section
             }
         }
     }
-
 
     /**
      * Parses the given string as a base-10 integer; returns the provided default when
