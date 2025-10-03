@@ -1,8 +1,8 @@
 time-on-task:
   - task: "Part 1"
-    time: 300
+    time: 330
   - task: "Part 2"
-    time: 320
+    time: 350
   - task: "Part 3"
     time: 470
   - task: "Part 4"
@@ -83,3 +83,6 @@ sessions:
   - start: 2025-10-03 14:50
     end: 2025-10-03 15:00
     notes: "fixed tests"
+  - start: 2025-10-04 02:00
+    end: 2025-10-04 03:00
+    notes: "add some annotation in part 1 and 2"

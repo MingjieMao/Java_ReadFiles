@@ -1,4 +1,3 @@
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -7,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,17 +22,6 @@ public class PlayerCharacterTest {
         return Paths.get("tests", "characters.ini").toFile();
     }
 
-    // Convert GameItem[] to Set<String> of names
-    private static Set<String> toNameSet(GameItem[] inv) {
-        Set<String> s = new HashSet<>();
-        if (inv != null) {
-            for (GameItem it : inv) {
-                if (it != null) s.add(it.getName());
-            }
-        }
-        return s;
-    }
-
     // Load all items from items.ini
     private GameItem[] loadAllItems() {
         GameItem[] items = GameItem.readItems(itemsFile());
@@ -45,11 +34,17 @@ public class PlayerCharacterTest {
     private PlayerCharacter[] loadAllChars(GameItem[] allItems) {
         PlayerCharacter[] pcs = PlayerCharacter.readCharacters(charactersFile(), allItems);
         assertNotNull(pcs, "characters.ini returned null");
-        assertTrue(pcs.length >= 0, "Characters should not be empty");
+        assertTrue(pcs.length > 0, "Characters should not be empty");
         return pcs;
     }
 
-    // Find a character by name
+    /**
+     * Find a character by name.
+     * Design Strategy: Iteration:
+     * @param pcs   array of PlayerCharacter, may be null or contain nulls
+     * @param name  target name to search for (must not be null)
+     * @return the matching PlayerCharacter if found; otherwise null
+     */
     private static PlayerCharacter findByName(PlayerCharacter[] pcs, String name) {
         for (PlayerCharacter pc : pcs) {
             if (pc != null && name.equals(pc.getName())) return pc;
@@ -57,7 +52,13 @@ public class PlayerCharacterTest {
         return null;
     }
 
-    // Convert inventory to set of item names (ignoring nulls)
+    /**
+     * Convert inventory to set of item names (ignoring nulls)
+     * Design Strategy: Iteration
+     * Effects: Allocates a new {@code HashSet}, adds item names, and returns it.
+     * @param inv array of {@code GameItem}, may be null or contain nulls
+     * @return a {@code Set<String>} of non-null item names (never null, possibly empty)
+     */
     private static Set<String> namesOf(GameItem[] inv) {
         Set<String> set = new HashSet<>();
         if (inv != null) {
@@ -156,7 +157,7 @@ public class PlayerCharacterTest {
         PlayerCharacter o = findByName(pcs, "OrderFree");
         assertNotNull(o, "Can't find [OrderFree]");
 
-        Set<String> expected = new HashSet<>(Arrays.asList("Elven Cloak"));
+        Set<String> expected = new HashSet<>(List.of("Elven Cloak"));
         assertEquals(expected, namesOf(o.getInventory()), "Inventory mismatch");
 
         assertEquals(2, o.getStrength(),  "Base Strength mismatch");
@@ -182,7 +183,7 @@ public class PlayerCharacterTest {
         assertNotNull(pcs, "Should not return null for empty file");
         assertEquals(0, pcs.length, "Empty characters.ini should yield empty array");
 
-        emptyChars.delete();
+        assertTrue(emptyChars.delete(), "Temp file should be deleted");
     }
 
     // characters.ini: section missing base stats defaults to 0

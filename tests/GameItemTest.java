@@ -3,10 +3,10 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class GameItemTest {
     // return tests/items.ini
@@ -14,9 +14,19 @@ public class GameItemTest {
         return Paths.get("tests", "items.ini").toFile();
     }
 
+    /**
+     * Find a GameItem in the array by its name.
+     *
+     * @param items The array of items to search
+     * @param name The target item name to look for
+     * @return If the item is not null and its name matches, return it.
+     *         If no matching item is found, return null.
+     */
     private static GameItem findByName(GameItem[] items, String name) {
         for (GameItem g : items) {
-            if (g != null && name.equals(g.getName())) return g;
+            if (g != null && name.equals(g.getName())) {
+                return g;
+            }
         }
         return null;
     }
@@ -129,7 +139,7 @@ public class GameItemTest {
 
     // Order Test: Inverted property order should not affect the result.
     @Test
-    void testPropertyOrder() throws IOException {
+    void testPropertyOrder() {
         GameItem[] items = GameItem.readItems(itemsFile());
         GameItem ooo = findByName(items, "OutOfOrder");
         assertNotNull(ooo, "Can't find [OutOfOrder] in items.ini");
@@ -139,6 +149,7 @@ public class GameItemTest {
         assertEquals(-1, ooo.getAttackBonus(), "AttackBonus false");
         assertEquals(1, ooo.getAgilityBonus(), "AgilityBonus false");
         assertEquals(2, ooo.getDefenseBonus(), "DefenseBonus false");
+        assertThrows(IOException.class, () -> Files.readString(Path.of("not_exists.txt")));
     }
 
     // [Repeat]: Verify attribute duplication and take the last value.
@@ -159,7 +170,7 @@ public class GameItemTest {
         File emptyFile = File.createTempFile("empty", ".ini");
         GameItem[] items = GameItem.readItems(emptyFile);
         assertEquals(0, items.length, "Empty INI file should yield empty items array");
-        emptyFile.delete();
+        assertTrue(emptyFile.delete(), "Temp file should be deleted");
     }
 
     // Edge Test: Missing required property (e.g., Weight or Value).
