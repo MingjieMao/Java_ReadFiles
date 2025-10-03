@@ -70,7 +70,7 @@ public class IniLoaderTest {
     // validate all properties, including Type being ignored.
     @Test
     void testParse_heavySword() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem hs = findByName(items, "Heavy Sword");
         assertNotNull(hs, "Can't find [Heavy Sword] in items.ini");
         assertEquals(250, hs.getValue());
@@ -84,7 +84,7 @@ public class IniLoaderTest {
     // validate that property order does not affect parsing.
     @Test
     void testParse_elvenCloak() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem ec = findByName(items, "Elven Cloak");
         assertNotNull(ec, "Can't find [Elven Cloak] in items.ini");
         assertEquals(120, ec.getValue());
@@ -98,7 +98,7 @@ public class IniLoaderTest {
     // validate only Value and Weight are set， others return 0.
     @Test
     void testParse_healthPotion() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem hp = findByName(items, "Health Potion");
         assertNotNull(hp, "Can't find [Health Potion] in items.ini");
         assertEquals(50, hp.getValue());
@@ -111,7 +111,7 @@ public class IniLoaderTest {
     // Parsing: [Wooden Shield], Value=5, Weight=10, AttackBonus=-7, AgilityBonus=-1, DefenseBonus=5
     @Test
     void parse_woodenShield() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem ws = findByName(items, "Wooden Shield");
         assertNotNull(ws, "Can't find [Wooden Shield] in items.ini");
         assertEquals(5, ws.getValue());
@@ -124,7 +124,7 @@ public class IniLoaderTest {
     // Edge Test: Validate unknown properties are ignored ([UnknownPropertiesAreIgnored]).
     @Test
     void testUnknownPropertiesAreIgnored() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem ignored = findByName(items, "UnknownPropertiesAreIgnored");
         assertNotNull(ignored, "Can't find [UnknownPropertiesAreIgnored] in items.ini");
         assertEquals(50, ignored.getValue(), "Value should be 50");
@@ -137,7 +137,7 @@ public class IniLoaderTest {
     // Order Test: Inverted property order should not affect the result.
     @Test
     void testPropertyOrder() throws IOException {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem ooo = findByName(items, "OutOfOrder");
         assertNotNull(ooo, "Can't find [OutOfOrder] in items.ini");
         // AgilityBonus=1, DefenseBonus=2, AttackBonus=1, Weight=2, Value=30
@@ -151,7 +151,7 @@ public class IniLoaderTest {
     // [Repeat]: Verify attribute duplication and take the last value.
     @Test
     void testParse_repeatProperties() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem repeat = findByName(items, "Repeat");
         assertNotNull(repeat, "Can't find [Repeat] in items.ini");
         assertEquals(55, repeat.getValue(), "Value mismatch (should take the last one: 55)");
@@ -164,7 +164,7 @@ public class IniLoaderTest {
     @Test
     void testParse_emptyFile() throws IOException {
         File emptyFile = File.createTempFile("empty", ".ini");
-        GameItem[] items = GameItem.readItems(emptyFile);
+        GameItem[] items = IniLoader.readItems(emptyFile);
         assertEquals(0, items.length, "Empty INI file should yield empty items array");
         emptyFile.delete();
     }
@@ -172,7 +172,7 @@ public class IniLoaderTest {
     // Edge Test: Missing required property (e.g., Weight or Value).
     @Test
     void testParse_missingValueOrWeight_fromFile() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem mf = findByName(items, "MissingFields");
         assertNotNull(mf, "Can't find [MissingFields] in items.ini");
         assertEquals(0, mf.getValue(), "Missing Value should default to 0");
@@ -203,7 +203,7 @@ public class IniLoaderTest {
 
     // Load all items from items.ini
     private GameItem[] loadAllItems() {
-        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem[] items = IniLoader.readItems(itemsFile());
         assertNotNull(items, "items.ini should not be null");
         assertTrue(items.length > 0, "items.ini should not be empty");
         return items;
@@ -211,7 +211,7 @@ public class IniLoaderTest {
 
     // Load all characters
     private PlayerCharacter[] loadAllChars(GameItem[] allItems) {
-        PlayerCharacter[] pcs = PlayerCharacter.readCharacters(charactersFile(), allItems);
+        PlayerCharacter[] pcs = IniLoader.readCharacters(charactersFile(), allItems);
         assertNotNull(pcs, "characters.ini returned null");
         assertTrue(pcs.length >= 0, "Characters should not be empty");
         return pcs;
@@ -347,7 +347,7 @@ public class IniLoaderTest {
         File emptyChars = File.createTempFile("charactersEmpty", ".ini");
         Files.writeString(emptyChars.toPath(), "");  // empty content
 
-        PlayerCharacter[] pcs = PlayerCharacter.readCharacters(emptyChars, allItems);
+        PlayerCharacter[] pcs = IniLoader.readCharacters(emptyChars, allItems);
         assertNotNull(pcs, "Should not return null for empty file");
         assertEquals(0, pcs.length, "Empty characters.ini should yield empty array");
 
@@ -376,8 +376,8 @@ public class IniLoaderTest {
     // Part 3
 
     public PlayerCharacter[] loadCharacters(File file) {
-        GameItem[] allItems = GameItem.readItems(Paths.get("tests", "items.ini").toFile());
-        return PlayerCharacter.readCharacters(file, allItems);
+        GameItem[] allItems = IniLoader.readItems(Paths.get("tests", "items.ini").toFile());
+        return IniLoader.readCharacters(file, allItems);
     }
 
     private File partiesDir() {

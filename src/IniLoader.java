@@ -57,14 +57,11 @@ public final class IniLoader {
      *           Postcondition: returns a non-null array whose length equals the number of sections.
      *           Postcondition: property insertion order is preserved (uses LinkedHashMap per section).
      */
-    public static <T> T[] loadINI(
-            File file,
-            Function<Integer, T[]> makeArray,
-            BiFunction<String, Map<String, String>, T> elementFactory
-    ) {
+    public static <T> T[] loadINI(File file, Function<Integer, T[]> makeArray,
+                                  BiFunction<String, Map<String, String>, T> elementFactory) {
         List<T> results = new ArrayList<>();
         String currentName = null;
-        Map<String, String> properties = new HashMap<>();
+        Map<String, String> properties = new LinkedHashMap<>();
         try(var reader = new BufferedReader(new FileReader(file))) {
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                  if (line.startsWith("[") && line.endsWith(("]"))) {
@@ -98,6 +95,30 @@ public final class IniLoader {
     }
 
     /**
+     * Parses the given string as a base-10 integer; returns the provided default when
+     * the string is {@code null} or empty.
+     *
+     * Examples:
+     * parseIntOrDefault(null, 0)        == 0
+     * parseIntOrDefault("", 42)         == 42
+     * parseIntOrDefault("0", 99)        == 0
+     * parseIntOrDefault("-7", 0)        == -7
+     * parseIntOrDefault(" 5", 0)        -> NumberFormatException  // no trimming
+     * parseIntOrDefault("+3", 0)        -> NumberFormatException  // strict parseInt
+     *
+     * Design Strategy: Case distinction
+     *
+     * @param s   input string to parse; may be {@code null} or empty
+     * @param def default value to return when {@code s} is {@code null} or empty
+     * @return the parsed integer, or {@code def} when {@code s} is {@code null}/empty
+     * @throws NumberFormatException if {@code s} is non-empty but not a valid base-10 integer
+     */
+    private static int parseIntOrDefault(String s, int def) {
+        if (s == null || s.isEmpty()) return def;
+        return Integer.parseInt(s);
+    }
+
+    /**
      * The same method as from Part 1, but now implemented using loadINI.
      *
      * Examples:
@@ -111,7 +132,7 @@ public final class IniLoader {
      *
      * Design Strategy: Combining Functions
      *
-     * Effects: reads the file; numeric fields are parsed via {@code Integer.parseInt}.
+     * Effects: reads the file; numeric fields are parsed via {@code parseIntOrDefault}.
      *
      * @param file items INI file
      * @return array of {@code GameItem}
@@ -123,11 +144,11 @@ public final class IniLoader {
     public static GameItem[] readItems(File file) {
         Function<Integer, GameItem[]> makeArray = n -> new GameItem[n];
         BiFunction<String, Map<String,String>, GameItem> elementFactory = (name, properties) -> {
-            int weight = Integer.parseInt(properties.get("Weight"));
-            int value = Integer.parseInt(properties.get("Value"));
-            int attackBonus = Integer.parseInt(properties.get("AttackBonus"));
-            int agilityBonus = Integer.parseInt(properties.get("AgilityBonus"));
-            int defenseBonus = Integer.parseInt(properties.get("DefenseBonus"));
+            int weight = parseIntOrDefault(properties.get("Weight"), 0);
+            int value = parseIntOrDefault(properties.get("Value"), 0);
+            int attackBonus = parseIntOrDefault(properties.get("AttackBonus"), 0);
+            int agilityBonus = parseIntOrDefault(properties.get("AgilityBonus"), 0);
+            int defenseBonus = parseIntOrDefault(properties.get("DefenseBonus"), 0);
             return new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus);
         };
         return IniLoader.loadINI(file, makeArray, elementFactory);
@@ -165,23 +186,31 @@ public final class IniLoader {
     public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
         Map<String, GameItem> byName = new HashMap<>();
         for (GameItem item : allItems) {
-            byName.put(item.getName(), item);
+            if (item != null && item.getName() != null){
+                byName.put(item.getName(), item);
+            }
         }
         Function<Integer, PlayerCharacter[]> makeArray = n -> new PlayerCharacter[n];
         BiFunction<String, Map<String, String>, PlayerCharacter> elementFactory = (name, properties) -> {
-            int strength = Integer.parseInt(properties.get("Strength"));
-            int dexterity = Integer.parseInt(properties.get("Dexterity"));
-            int fortitude = Integer.parseInt(properties.get("Fortitude"));
+            int strength = parseIntOrDefault(properties.get("Strength"), 0);
+            int dexterity = parseIntOrDefault(properties.get("Dexterity"), 0);
+            int fortitude = parseIntOrDefault(properties.get("Fortitude"), 0);
             String inventory = properties.get("Inventory");
             List<GameItem> bag = new ArrayList<>();
-            for (String itemName : inventory.split(",")) {
-                GameItem item = byName.get(itemName);
-                bag.add(item);
+            if (inventory != null && !inventory.isEmpty()) {
+                for (String itemName : inventory.split(",")) {
+                    if (itemName.isEmpty()) {
+                        continue;
+                    }
+                    GameItem item = byName.get(itemName);
+                    if (item != null) {
+                        bag.add(item);
+                    }
+                }
             }
             return new PlayerCharacter(name, strength, dexterity, fortitude,bag.toArray(new GameItem[0]));
         };
         return IniLoader.loadINI(file, makeArray, elementFactory);
     }
 }
-
 
