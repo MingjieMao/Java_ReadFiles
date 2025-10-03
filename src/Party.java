@@ -4,12 +4,10 @@ import java.util.*;
 /**
  * Party represents an adventuring party: an ordered roster of PlayerCharacters
  * that can be loaded from simple INI files and queried for combined power.
- *
  * Examples:
  * - Given file "tests/Parties/fellowship.ini":
  *     [Party]
  *     Name=fellowship
- *
  *     [Members]
  *     0=Gimli
  *     1=Legolas
@@ -19,16 +17,19 @@ import java.util.*;
  *     p.getName() -> "fellowship"
  *     names(p.getMembers()) -> ["Gimli","Legolas","Aragorn"] (in order)
  *     p.computeCombinedAttackRating() == sum(pc.computeTotalStrength() for pc in members)
- *
  * Template:
  * { this.name, this.members }
  *
- * @implSpec Invariants:
- *   1. {@code name} is non-null and set at construction time.
- *   2. {@code members} preserves the insertion order; {@link #getMembers()} returns a defensive copy.
- *   3. INI parsing follows the course-required pattern (BufferedReader + for(line!=null) + RuntimeException).
- *   4. No {@code continue} statements are used in parsing.
- *   5. When loading, member names are resolved via an exact String key in a provided map.
+ * @implSpec
+ * Invariants:
+ * - {@code name} is non-null and non-empty.
+ * - {@code members} is non-null, preserves insertion order, and contains no null elements.
+ * Pre-conditions:
+ * - When constructing a Party, caller must provide a valid {@code name} and a non-null {@code List<PlayerCharacter>}.
+ * Postconditions:
+ * - A Party instance is immutable after construction (fields are {@code final}).
+ * - Queries such as {@code getName()}, {@code getMembers()},
+ *   and combined-stat methods always return consistent values derived from construction arguments.
  */
 public class Party {
     private final String name;
@@ -36,12 +37,10 @@ public class Party {
 
     /**
      * Creates an empty party with the given name.
-     *
      * Examples:
      * - new Party("fellowship")
      * - new Party("A")
      * - new Party("B")
-     *
      * Design Strategy: Simple Expression (field assignment).
      *
      * @param name party name (e.g., "fellowship").
@@ -54,11 +53,9 @@ public class Party {
 
     /**
      * Returns the name of the party (e.g., from the filename).
-     *
      * Examples:
      * - new Party("fellowship").getName() -> "fellowship"
      * - new Party("A").getName() -> "A"
-     *
      * Design Strategy: Simple Expression.
      *
      * @return party name
@@ -69,7 +66,6 @@ public class Party {
 
     /**
      * Returns the characters who are members of this party.
-     *
      * Examples:
      *  - Given: Party p = new Party("team");
      *           PlayerCharacter g = new PlayerCharacter("Gimli", 18, 12, 30, new GameItem[0]);
@@ -79,15 +75,13 @@ public class Party {
      *    Expect: PlayerCharacter[] a1 = p.getMembers();
      *            a1.length == 2
      *            a1[0].getName().equals("Gimli")   // a1[0]: Gimli
-     *           a1[1].getName().equals("Legolas") // a1[1]: Legolas
-     *
+     *            a1[1].getName().equals("Legolas") // a1[1]: Legolas
      *            // Changing the returned array does NOT affect the party (defensive copy)
      *            a1[0] = l;
      *            PlayerCharacter[] a2 = p.getMembers();
      *            a2.length == 2
      *            a2[0].getName().equals("Gimli")   // still Gimli — proves the internal roster wasn’t affected by modifying a1
      *            a2[1].getName().equals("Legolas")
-     *
      * Design Strategy: Simple Expression (List -> array copy).
      *
      * @return snapshot array of members
@@ -100,15 +94,18 @@ public class Party {
     /**
      * Returns the combined attack rating of the party, calculated as the
      * sum of every member's computeTotalStrength().
-     *
      * Examples:
      * - Given: members = [Gimli(20 total), Legolas(15 total)]
      *   Expect: 35
-     *
      * Design Strategy: Iteration
      *
-     * @return combined attack rating
-     * @implSpec Postcondition: result == sum(pc.computeTotalStrength() for pc in this.members).
+     * @return combined attack rating of all members
+     * @implSpec
+     * Invariants: {@code members} is never null, and contains only non-null PlayerCharacters.
+     * Pre-conditions: Party must have been constructed with a valid members list.
+     * Postconditions:
+     *  - Result equals the sum of {@code computeTotalStrength()} of all members.
+     *  - If {@code members} is empty, result == 0.
      */
     public int computeCombinedAttackRating() {
         int sum = 0;
@@ -120,7 +117,6 @@ public class Party {
 
     /**
      * Adds a character to the party.
-     *
      * Examples:
      *  - Given: GameItem axe   = new GameItem("Battle Axe", 3, 0, 0);
      *           GameItem bow   = new GameItem("Longbow", 2, 1, 0);
@@ -132,15 +128,19 @@ public class Party {
      *    Expect: p.getMembers().length == 2
      *            p.getMembers()[0].getName().equals("Gimli")
      *            p.getMembers()[1].getName().equals("Legolas")
-     *
-     * Effects: adds element to end of list; increases size by 1.
-     *
      * Design Strategy: Case Distinction
+     * Effects:
+     * - Adds the new character to the end of the list if not already contained.
+     * - Increases size by 1 if character was absent, otherwise no change.
      *
      * @param character player to add.
-     * @implSpec Postcondition:
-     *   - If character was not already present: size increases by exactly 1 and character becomes the last element.
-     *   - If character was already present: size and order remain unchanged.
+     * @implSpec
+     * Invariants: {@code members} is never null and contains no duplicates.
+     * Pre-conditions: {@code character} must not be null.
+     * Postcondition:
+     * - If {@code character} was not already in {@code members}, it is appended at the end.
+     * - If {@code character} was already present, list remains unchanged.
+     *  - Size of {@code members} increases by at most 1.
      */
     public void addMember(PlayerCharacter character) {
         if (!members.contains(character)) {
@@ -150,7 +150,6 @@ public class Party {
 
     /**
      * Removes a character from the party.
-     *
      * Examples:
      *  - Given:
      *      GameItem axe   = new GameItem("Battle Axe", 3, 0, 0);
@@ -165,15 +164,17 @@ public class Party {
      *    Expect:
      *      p.getMembers().length == 1
      *      p.getMembers()[0].getName().equals("Legolas")
-     *
      * Effects: removes one matching element; decreases size by 1.
-     *
      * Design Strategy: Case Distinction
      *
      * @param character player to remove
-     * @implSpec Postcondition:
-     *  - If character was present: size decreases by exactly 1 and one occurrence is removed; relative order of remaining elements is preserved.
-     *  - If character was not present: size and order remain unchanged.
+     * @implSpec
+     * Invariants: {@code members} is never null; contains no duplicate references.
+     * Pre-conditions: None beyond non-null {@code members}.
+     * Postcondition:
+     *  - If {@code character} was present, it is removed once, and size decreases by 1.
+     *  - If {@code character} was not present, no change occurs.
+     *  - {@code members} remains consistent (no nulls introduced).
      */
     public void removeMember(PlayerCharacter character) {
         members.remove(character);
@@ -182,7 +183,6 @@ public class Party {
     /**
      * Saves the current state of the party to an appropriately named file
      * ("[name].ini") in the given directory.
-     *
      * Examples:
      *  - Given: Party p = new Party("fellowship");
      *           GameItem axe = new GameItem("Battle Axe", 3, 0, 0);
@@ -195,29 +195,47 @@ public class Party {
      *            Content:
      *              [Party]
      *              Name=fellowship
-     *
      *              [Members]
      *              0=Gimli
      *              1=Legolas
-     *
      * Design Strategy: Iteration
+     * Effects:
+     * - Side effect: creates or overwrites a file in the given directory.
+     * - Performs I/O, may throw exceptions if writing fails.
      *
-     * @param directory target directory
-     *
+     * @param directory target directory.
+     * @throws RuntimeException if an I/O error occurs during file writing.
+     * @implSpec
+     * Invariants:
+     * - {@code name} is non-null and non-empty.
+     * - {@code members} is non-null, contains no nulls.
+     * Pre-conditions:
+     * - {@code directory} must be a valid writable directory, not null.
+     * Postconditions:
+     * - Creates/overwrites file named {@code name + ".ini"} inside {@code directory}.
+     * - File content reflects current party state (name and ordered members).
      */
     public void storeParty(File directory) {
         File file = new File(directory, name + ".ini");
-        StringBuilder sb = new StringBuilder();
-        for (int i=0; i < members.size(); i++) {
-            PlayerCharacter pc = members.get(i);
-            if (pc != null) {
-                sb.append(pc.getName());
-                if (i < members.size() - 1) {
-                    sb.append(",");
+
+        try (var writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write("[Party]");
+            writer.newLine();
+            writer.write("Name=" + name);
+            writer.newLine();
+
+            writer.write("[Members]");
+            writer.newLine();
+            for (int i = 0; i < members.size(); i++) {
+                PlayerCharacter pc = members.get(i);
+                if (pc != null) {
+                    writer.write(i + "=" + pc.getName());
+                    writer.newLine();
                 }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to store party " + name, e);
         }
-        String memberString = sb.toString();
     }
 
     /**
@@ -226,55 +244,108 @@ public class Party {
      * given directory. Assume that all INI files in the directory are
      * non-empty and valid INI Party files. Moreover, assume that all
      * characters in the Party files are contained in allCharacters.
-     *
-     * Effects: opens files for reading; may throw a RuntimeException on failure.
-     *
+     * Examples:
+     * - Given: Directory "tests/Parties" contains:
+     *          fellowship.ini:
+     *          [Party]
+     *          Name=fellowship
+     *          [Members]
+     *          0=Gimli
+     *          1=Legolas
+     *          2=Aragorn
+     *          hunters.ini:
+     *          [Party]
+     *          Name=hunters
+     *          [Members]
+     *          0=Aragorn
+     *          1=Legolas
+     *          allCharacters = [Aragorn, Legolas, Gimli, Frodo, Sam]
+     *   Expect: loadParties(allCharacters, dir) returns Party[] length 2:
+     *           [0]: name="fellowship", members=["Gimli","Legolas","Aragorn"]
+     *           [1]: name="hunters",    members=["Aragorn","Legolas"]
      * Design Strategy: Iteration
+     * Effects:
+     *  - Opens files for reading.
+     *  - Allocates new Party objects.
+     *  - May throw {@code RuntimeException} if directory reading/parsing fails.
      *
-     * @param allCharacters An array of all PlayerCharacters in the game.
+     * @param allCharacters An array of all PlayerCharacters in the game, must include every character referenced in INI files.
      * @param directory The File object representing the directory containing the party INI files.
-     * @return An array of Party objects loaded from the directory.
+     * @return non-null array of Party objects loaded from the directory.
      * @throws RuntimeException wraps any exception as per course policy
-     * @implSpec Precondition: directory is non-null; every *.ini in directory is a valid non-empty Party INI;
-     *  - allCharacters contains every character name referenced in those INIs.
-     *  - Postcondition: returns a non-null array; for each loaded party, member order matches numeric keys in its INI.
+     * @implSpec
+     * Invariants:
+     *  - Returned array is non-null and contains no null Party.
+     *  - Each Party has a non-null name and non-null members list.
+     * Pre-conditions:
+     * - {@code directory} is non-null.
+     * - Every {@code *.ini} file in {@code directory} is non-empty, valid, and refers only to known characters.
+     * Postconditions:
+     * - Returns a Party[] whose length equals the number of *.ini files.
+     * - Each Party preserves the order of members according to numeric keys in its INI.
      */
     public static Party[] loadParties(PlayerCharacter[] allCharacters, File directory){
-        // 1. Build lookup
+        // 1. Build lookup from character name to PlayerCharacter
         HashMap<String, PlayerCharacter> byName = new HashMap<>();
         for (PlayerCharacter pc : allCharacters) {
-            if (pc != null && pc.getName() != null) byName.put(pc.getName(), pc);
+            if (pc != null && pc.getName() != null) {
+                byName.put(pc.getName(), pc);
+            }
         }
-        // 2. Enumerate .ini files
-        File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".ini"));
-        // 3. Parse each into a Party
+
+        // 2. Enumerate .ini files in the directory
+        File[] files = directory.listFiles((_, name) -> name.toLowerCase().endsWith(".ini"));
+        if (files == null) {
+            return new Party[0];
+        }
+
+        // 3. Parse each file into a Party and collect
         List<Party> out = new ArrayList<>();
         for (File f : files) {
             Party p = loadOnePartyFromIniFile(f, byName);
-            if (p != null) out.add(p);
+            out.add(p);
         }
+
+        // Convert list to array
         return out.toArray(new Party[0]);
     }
 
     /**
      * Loads exactly one Party from a single INI file.
-     *
+     * Examples:
+     * - Given file fellowship.ini:
+     *     [Party]
+     *     Name=fellowship
+     *     [Members]
+     *     0=Gimli
+     *     1=Legolas
+     *     2=Aragorn
+     *   Expect: Party with name="fellowship" and members ["Gimli","Legolas","Aragorn"] in order.
      * Design Strategy: Iteration
-     *
-     * Effects: opens the file, reads it fully, constructs a Party instance.
+     * Effects:
+     * - Opens and reads the given INI file.
+     * - Allocates and returns a new Party object.
+     * - May throw {@code RuntimeException} if file reading/parsing fails.
      *
      * @param ini    INI file for one party
-     * @param byName name -> PlayerCharacter lookup
+     * @param byName lookup map from character name -> PlayerCharacter
      * @return Party built from the file contents
      * @throws RuntimeException wraps any exception as per course policy
-     * @implSpec Precondition: ini is a valid, non-empty Party INI file; byName maps every referenced member name.
-     *           Postcondition: constructs a Party whose name equals the [Party].
-     *           Name and whose members follow sorted numeric keys (0,1,2,...).
+     * @implSpec
+     * Invariants:
+     * - Returned Party is non-null, with non-null name and non-null member list.
+     * Pre-conditions:
+     * - {@code ini} is a valid, non-empty Party INI file.
+     * - {@code byName} maps every referenced member name to a PlayerCharacter.
+     * Postconditions:
+     * - Constructs and returns a Party whose name equals the [Party] Name.
+     * - Members are inserted in ascending numeric key order (0,1,2,…).
      */
     private static Party loadOnePartyFromIniFile(File ini, HashMap<String, PlayerCharacter> byName) {
-
+        // Temporary holder for parsed values
         PartyDataHolder holder = new PartyDataHolder();
 
+        // Read file line by line and parse each line
         try (BufferedReader reader = new BufferedReader(new FileReader(ini))) {
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
                 parsePartyLine(line, holder);
@@ -283,60 +354,72 @@ public class Party {
             throw new RuntimeException(e);
         }
 
+        // Extract parsed data
         String partyNameFromFile = holder.partyNameFromFile;
         Map<Integer, String> memberMap = holder.memberMap;
 
+        // Construct Party with parsed name
         Party p = new Party(partyNameFromFile);
 
-        // Keep file-declared order by sorting numeric keys.
+        // Preserve declared order by sorting numeric keys
         List<Integer> keys = new ArrayList<>(memberMap.keySet());
-        Collections.sort(keys);  // numeric ascending
+        Collections.sort(keys);
         for (Integer idx : keys) {
             String name = memberMap.get(idx);
             PlayerCharacter pc = byName.get(name);
             if (pc != null) {
-                p.members.add(pc);
+                p.members.add(pc);  // Add mapped PlayerCharacter to Party
             }
         }
+        // Return fully constructed Party
         return p;
     }
 
     /**
      * Parses a single line of a Party INI file and updates parsing state.
-     *
      * Examples (state transitions):
      * - Line "[Party]"    : holder.currentSection -> "Party"
      * - Line "Name=foo"   : if currentSection == "Party", set holder.partyNameFromFile = "foo"
      * - Line "[Members]"  : holder.currentSection -> "Members"
      * - Line "0=Gimli"    : if currentSection == "Members", memberMap.put(0,"Gimli")
-     *
      * Design Strategy: Case distinction
+     * Effects:
+     * - Mutates {@code holder} by changing currentSection, partyNameFromFile, or memberMap.
      *
      * @param line   raw line (already read from file)
      * @param holder mutable parsing state to update
      * @throws NumberFormatException if member index is not a valid integer
-     * @implSpec Precondition: line != null and holder != null.
-     * Postcondition: updates holder.currentSection on section headers; updates holder.partyNameFromFile or holder.
-     * memberMap on key=value lines according to currentSection.
+     * @implSpec
+     * Invariants:
+     * - {@code holder} remains non-null after method execution.
+     * Precondition:
+     * - {@code line != null}, {@code holder != null}.
+     * Postconditions:
+     * - If {@code line} is a section header, updates {@code holder.currentSection}.
+     * - If {@code line} is "Name=..." in [Party], sets {@code holder.partyNameFromFile}.
+     * - If {@code line} is "i=name" in [Members], adds entry to {@code holder.memberMap}.
      */
     private static void parsePartyLine(String line, PartyDataHolder holder) {
         String currentSection = holder.currentSection;
-        // Section header like [Party] or [Members]
+
+        // Case 1: Section header like [Party] or [Members]
         if (line.startsWith("[") && (line.endsWith("]"))) {
             holder.currentSection = (line.substring(1, (line.length() - 1)));
         } else {
+            // Case 2: key=value line
             int eq = line.indexOf('=');
             if (eq >= 0) {
                 String key = line.substring(0, eq);
                 String val = line.substring(eq + 1);
+                // If in [Party] section
                 if ("Party".equalsIgnoreCase(currentSection)) {
                     if ("Name".equalsIgnoreCase(key)) {
-                        holder.partyNameFromFile = val;
+                        holder.partyNameFromFile = val;  // set party name
                     }
+                // If in [Members] section
                 } else if ("Members".equalsIgnoreCase(currentSection)) {
-                    // assume key is number（0,1,2...）
-                    int idx = Integer.parseInt(key);
-                    holder.memberMap.put(idx, val);
+                    int idx = Integer.parseInt(key);  // Assume key is numeric index (0,1,2,…)
+                    holder.memberMap.put(idx, val);   // add mapping index -> name
                 }
             }
         }
@@ -345,30 +428,31 @@ public class Party {
     /**
      * Holds intermediate parsing state while reading a single Party INI file.
      * Not exposed outside the loader; only used to accumulate data line-by-line.
-     *
      * Examples:
      * - After reading "[Party]":
      *     holder.currentSection == "Party"
      *     holder.partyNameFromFile == null
      *     holder.memberMap.isEmpty() == true
-     *
      * - After reading "Name=fellowship" (and currentSection == "Party"):
      *     holder.partyNameFromFile == "fellowship"
-     *
      * - After reading "[Members]":
      *     holder.currentSection == "Members"
-     *
      * - After reading "0=Gimli", "1=Legolas", "2=Aragorn" (and currentSection == "Members"):
      *     holder.memberMap.get(0).equals("Gimli")
      *     holder.memberMap.get(1).equals("Legolas")
      *     holder.memberMap.get(2).equals("Aragorn")
-     *
      * Design Strategy: Simple Expression (field assignment).
      *
-     * @implSpec Invariants:
-     * - currentSection is "", "Party", or "Members";
-     * - if currentSection == "Party" and line is "Name=X", then partyNameFromFile == X;
-     * - if currentSection == "Members" and line is "i=Name", then memberMap.get(i).equals(Name).
+     * @implSpec
+     * Invariants:
+     * - {@code currentSection} is always one of "", "Party", or "Members".
+     * - If {@code currentSection == "Party"} and line is "Name=X", then {@code partyNameFromFile == X}.
+     * - If {@code currentSection == "Members"} and line is "i=Name", then {@code memberMap.get(i).equals(Name)}.
+     * Pre-conditions:
+     * - Used only during Party INI parsing; not exposed outside loader.
+     * Postconditions:
+     * - After parsing completes, {@code partyNameFromFile} holds the Party name,
+     *   and {@code memberMap} holds the index-to-name mapping of all members.
      */
     private static class PartyDataHolder {
         // Party name read from the [Party] section; may remain null until discovered.
