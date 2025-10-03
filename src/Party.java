@@ -44,7 +44,8 @@ public class Party {
      *
      * Design Strategy: Simple Expression (field assignment).
      *
-     * @param name party name (e.g., "fellowship")
+     * @param name party name (e.g., "fellowship").
+     * @implSpec Postcondition: name = null, members = null
      */
     public Party(String name) {
         this.name = name;
@@ -90,6 +91,7 @@ public class Party {
      * Design Strategy: Simple Expression (List -> array copy).
      *
      * @return snapshot array of members
+     * @implSpec Postcondition: returns a new array (defensive copy);
      */
     public PlayerCharacter[] getMembers() {
         return members.toArray(new PlayerCharacter[0]);
@@ -106,6 +108,7 @@ public class Party {
      * Design Strategy: Iteration
      *
      * @return combined attack rating
+     * @implSpec Postcondition: result == sum(pc.computeTotalStrength() for pc in this.members).
      */
     public int computeCombinedAttackRating() {
         int sum = 0;
@@ -134,7 +137,10 @@ public class Party {
      *
      * Design Strategy: Case Distinction
      *
-     * @param character player to add
+     * @param character player to add.
+     * @implSpec Postcondition:
+     *   - If character was not already present: size increases by exactly 1 and character becomes the last element.
+     *   - If character was already present: size and order remain unchanged.
      */
     public void addMember(PlayerCharacter character) {
         if (!members.contains(character)) {
@@ -165,6 +171,9 @@ public class Party {
      * Design Strategy: Case Distinction
      *
      * @param character player to remove
+     * @implSpec Postcondition:
+     *  - If character was present: size decreases by exactly 1 and one occurrence is removed; relative order of remaining elements is preserved.
+     *  - If character was not present: size and order remain unchanged.
      */
     public void removeMember(PlayerCharacter character) {
         members.remove(character);
@@ -194,7 +203,7 @@ public class Party {
      * Design Strategy: Iteration
      *
      * @param directory target directory
-     * @implNote
+     *
      */
     public void storeParty(File directory) {
         File file = new File(directory, name + ".ini");
@@ -226,6 +235,9 @@ public class Party {
      * @param directory The File object representing the directory containing the party INI files.
      * @return An array of Party objects loaded from the directory.
      * @throws RuntimeException wraps any exception as per course policy
+     * @implSpec Precondition: directory is non-null; every *.ini in directory is a valid non-empty Party INI;
+     *  - allCharacters contains every character name referenced in those INIs.
+     *  - Postcondition: returns a non-null array; for each loaded party, member order matches numeric keys in its INI.
      */
     public static Party[] loadParties(PlayerCharacter[] allCharacters, File directory){
         // 1. Build lookup
@@ -255,6 +267,9 @@ public class Party {
      * @param byName name -> PlayerCharacter lookup
      * @return Party built from the file contents
      * @throws RuntimeException wraps any exception as per course policy
+     * @implSpec Precondition: ini is a valid, non-empty Party INI file; byName maps every referenced member name.
+     *           Postcondition: constructs a Party whose name equals the [Party].
+     *           Name and whose members follow sorted numeric keys (0,1,2,...).
      */
     private static Party loadOnePartyFromIniFile(File ini, HashMap<String, PlayerCharacter> byName) {
 
@@ -300,6 +315,9 @@ public class Party {
      * @param line   raw line (already read from file)
      * @param holder mutable parsing state to update
      * @throws NumberFormatException if member index is not a valid integer
+     * @implSpec Precondition: line != null and holder != null.
+     * Postcondition: updates holder.currentSection on section headers; updates holder.partyNameFromFile or holder.
+     * memberMap on key=value lines according to currentSection.
      */
     private static void parsePartyLine(String line, PartyDataHolder holder) {
         String currentSection = holder.currentSection;
@@ -327,12 +345,38 @@ public class Party {
     /**
      * Holds intermediate parsing state while reading a single Party INI file.
      * Not exposed outside the loader; only used to accumulate data line-by-line.
+     *
+     * Examples:
+     * - After reading "[Party]":
+     *     holder.currentSection == "Party"
+     *     holder.partyNameFromFile == null
+     *     holder.memberMap.isEmpty() == true
+     *
+     * - After reading "Name=fellowship" (and currentSection == "Party"):
+     *     holder.partyNameFromFile == "fellowship"
+     *
+     * - After reading "[Members]":
+     *     holder.currentSection == "Members"
+     *
+     * - After reading "0=Gimli", "1=Legolas", "2=Aragorn" (and currentSection == "Members"):
+     *     holder.memberMap.get(0).equals("Gimli")
+     *     holder.memberMap.get(1).equals("Legolas")
+     *     holder.memberMap.get(2).equals("Aragorn")
+     *
+     * Design Strategy: Simple Expression (field assignment).
+     *
+     * @implSpec Invariants:
+     * - currentSection is "", "Party", or "Members";
+     * - if currentSection == "Party" and line is "Name=X", then partyNameFromFile == X;
+     * - if currentSection == "Members" and line is "i=Name", then memberMap.get(i).equals(Name).
      */
     private static class PartyDataHolder {
         // Party name read from the [Party] section; may remain null until discovered.
         String partyNameFromFile = null;
+
         // Maps member index (0,1,2,...) to the member's character name from the [Members] section.
         final Map<Integer, String> memberMap = new HashMap<>();
+
         // Tracks the name of the current section header being parsed
         String currentSection = "";
     }
