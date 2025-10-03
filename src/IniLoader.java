@@ -1,7 +1,7 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.StringReader;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -9,23 +9,29 @@ import java.util.function.Function;
 /**
  * A tiny INI loader that converts each section into a stateful map of key→value,
  * then builds typed objects via a user-supplied factory.
- *
  * Examples:
  * - Given file: [Sword]
  *               Weight=3
  *               Value=20
  *   Expect: loadINI(file, GameItem[]::new, (name,props) -> new GameItem(...));
  *     elementFactory is called once with name="Sword" and props={"Weight":"3","Value":"20"}.
- *
  * Template:
  * { (BufferedReader reader), (String currentName), (Map<String,String> properties), (List<T> results) }
+ * Effects:
+ * - Opens and reads the file (I/O).
+ * - Builds and returns an array of constructed objects.
  *
- * @implSpec Invariants:
- *   1. Iteration pattern is: {@code for (line = reader.readLine(); line != null; line = reader.readLine())}.
- *   2. A section begins with a header "[Name]" on a dedicated line.
- *   3. Key-value lines have the first '=' split into key and value (unaltered, no trimming).
- *   4. No {@code continue} statements are used in the parsing loop.
- *   5. On EOF, the in-progress section (if any) is committed exactly once.
+ * @implSpec
+ * Invariants:
+ * - Each section starts with a non-null, non-empty header `[Name]`.
+ * - Each key=value pair belongs to the most recent header.
+ * - Properties map is reset on every new section.
+ * Pre-conditions:
+ * - Input file must exist and be readable.
+ * - Factory function must accept valid section names and maps.
+ * Postconditions:
+ * - Returns a non-null array of T constructed from all sections.
+ * - Array length equals number of `[Section]` headers encountered.
  */
 public final class IniLoader {
     /**
@@ -34,18 +40,17 @@ public final class IniLoader {
      * elementFactory function, passing the section name (e.g.,
      * "Heavy Sword") as the first argument and the stateful Map of its
      * properties as the second.
-     *
      * Examples:
-     *- Given: [A]
+     * - Given: [A]
      *         K1=V1
      *         [B]
      *         K2=V2
-     *  Expect: elementFactory("A", {"K1":"V1"}) then elementFactory("B", {"K2":"V2"});
+     *   Expect: elementFactory("A", {"K1":"V1"}) then elementFactory("B", {"K2":"V2"});
      *          result length == 2; order == ["A","B"].
-     *
-     * Design Strategy: Iteration
-     *
-     * Effects: opens the file for reading; performs file I/O; may throw a RuntimeException on failure.
+     * Design Strategy: Iteration and Case Distinction
+     * Effects:
+     * - Opens the file for reading (I/O).
+     * - May throw {@code RuntimeException} if any error occurs.
      *
      * @param file The INI file to read.
      * @param makeArray A function to create the final array of the correct type and size.
@@ -53,74 +58,119 @@ public final class IniLoader {
      * @param <T> element type
      * @return a non-null array containing one element per section, in encounter order
      * @throws RuntimeException if an I/O or parsing error occurs (all failures are wrapped)
-     * @implSpec Precondition: {@code file != null} and points to a readable INI file.
-     *           Postcondition: returns a non-null array whose length equals the number of sections.
-     *           Postcondition: property insertion order is preserved (uses LinkedHashMap per section).
+     * @implSpec
+     * Invariants:
+     * - Section names are taken literally between "[" and "]".
+     * - Properties map is reset at each new section.
+     * - Order of sections in file is preserved in output array.
+     * Pre-conditions:
+     * - {@code file} must be non-null and point to an existing readable file.
+     * - {@code makeArray} and {@code elementFactory} must be non-null.
+     * Postconditions:
+     * - Returns an array of size == number of section headers encountered.
+     * - Each element corresponds to one header and its associated key-value pairs.
      */
     public static <T> T[] loadINI(File file, Function<Integer, T[]> makeArray,
                                   BiFunction<String, Map<String, String>, T> elementFactory) {
-        List<T> results = new ArrayList<>();
-        String currentName = null;
-        Map<String, String> properties = new LinkedHashMap<>();
+        // Initialize state container for current parsing session
+        IniState<T> state = new IniState<>(elementFactory);
+
+        // Read file line by line until end of file (line == null).
         try(var reader = new BufferedReader(new FileReader(file))) {
             for (String line = reader.readLine(); line != null; line = reader.readLine()) {
-                 if (line.startsWith("[") && line.endsWith(("]"))) {
-                     // Commit previous section (if any)
-                     if (currentName != null) {
-                         T element = elementFactory.apply(currentName, properties);
-                         results.add(element);
-                     }
-                     // Start a new section
-                     currentName = line.substring(1, line.length()-1);
-                     properties = new LinkedHashMap<>();
-                 } else if (line.contains("=")) {
-                     // Key=value within current section
-                     String[] parts = line.split("=", 2);
-                     if (parts.length == 2 && currentName != null) {
-                         String key = parts[0];
-                         String value = parts[1];
-                         properties.put(key, value);
-                     }
-                 }
-            }
-            // Commit the last section at end Of File
-            if (currentName != null) {
-                T element = elementFactory.apply(currentName, properties);
-                results.add(element);
+                parseAllLines(reader, state);
+                state.commitSection();
             }
         } catch(Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e);  // Wrap any I/O or parsing errors into RuntimeException.
         }
-        return results.toArray(makeArray.apply(0));
+        // Convert the accumulated list into a typed array using makeArray factory.
+        return state.results.toArray(makeArray.apply(0));
     }
+
+    /**
+     * Parses all lines from the INI file and updates state accordingly.
+     *
+     * @param reader
+     * @param state
+     * @param <T>
+     * @throws IOException
+     */
+    private static <T> void parseAllLines(BufferedReader reader, IniState<T> state) throws IOException {
+        for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+            // Case 1: Section header like [SectionName]
+            if (line.startsWith("[") && line.endsWith("]")) {
+                // If we were already in a section, finalize it by calling elementFactory.
+                state.commitSection();
+                // Start new section
+                state.currentName = line.substring(1, line.length() - 1);
+
+            // Case 2: Key=Value inside section
+            } else if (line.contains("=")) {
+                String[] parts = line.split("=", 2);
+                if (parts.length == 2 && state.currentName != null) {
+                    String key = parts[0];
+                    String value = parts[1];
+                    state.properties.put(key, value);  // Add (key,value) to current section’s map.
+                }
+            }
+        }
+    }
+
+    /**
+     * State holder for parsing one INI file.
+     * @param <T>
+     */
+    private static class IniState<T> {
+        final BiFunction<String, Map<String, String>, T> elementFactory;
+        final List<T> results = new ArrayList<>();
+        String currentName = null;
+        Map<String, String> properties = new LinkedHashMap<>();
+
+        IniState(BiFunction<String, Map<String, String>, T> elementFactory) {
+            this.elementFactory = elementFactory;
+        }
+
+        void commitSection() {
+            if (currentName != null) {
+                // Build element and add to results
+                T element = elementFactory.apply(currentName, properties);
+                results.add(element);
+                // Reset for next section
+                currentName = null;
+                properties = new LinkedHashMap<>();
+            }
+        }
+    }
+
 
     /**
      * Parses the given string as a base-10 integer; returns the provided default when
      * the string is {@code null} or empty.
-     *
      * Examples:
      * parseIntOrDefault(null, 0)        == 0
      * parseIntOrDefault("", 42)         == 42
      * parseIntOrDefault("0", 99)        == 0
      * parseIntOrDefault("-7", 0)        == -7
-     * parseIntOrDefault(" 5", 0)        -> NumberFormatException  // no trimming
-     * parseIntOrDefault("+3", 0)        -> NumberFormatException  // strict parseInt
-     *
+     * parseIntOrDefault(" 5", 0)        -> NumberFormatException
+     * parseIntOrDefault("+3", 0)        -> NumberFormatException
      * Design Strategy: Case distinction
      *
      * @param s   input string to parse; may be {@code null} or empty
-     * @param def default value to return when {@code s} is {@code null} or empty
-     * @return the parsed integer, or {@code def} when {@code s} is {@code null}/empty
+     * @return the parsed integer, or {@code 0} when {@code s} is {@code null}empty
      * @throws NumberFormatException if {@code s} is non-empty but not a valid base-10 integer
      */
-    private static int parseIntOrDefault(String s, int def) {
-        if (s == null || s.isEmpty()) return def;
+    private static int parseIntOrDefault(String s) {
+        // Case 1: If input is null or empty, return default.
+        if (s == null || s.isEmpty()) {
+            return 0;
+        }
+        // Case 2: Otherwise, parse the string as an integer.
         return Integer.parseInt(s);
     }
 
     /**
      * The same method as from Part 1, but now implemented using loadINI.
-     *
      * Examples:
      * - Given: [Heavy Sword]
      *          Weight=10
@@ -129,34 +179,43 @@ public final class IniLoader {
      *          AgilityBonus=0
      *          DefenseBonus=0
      *   Expect: Creates one {@code GameItem("Heavy Sword", 50, 10, 7, 0, 0)}.
-     *
      * Design Strategy: Combining Functions
-     *
-     * Effects: reads the file; numeric fields are parsed via {@code parseIntOrDefault}.
+     * Effects:
+     * - Opens and reads the file (I/O).
+     * - Parses numeric fields with {@code parseIntOrDefault}.
+     * - May throw {@code RuntimeException} if reading/parsing fails.
      *
      * @param file items INI file
      * @return array of {@code GameItem}
      * @throws RuntimeException if an I/O or parsing error occurs (wrapped)
-     * @implSpec Precondition: every section contains the keys:
-     *           {@code Weight, Value, AttackBonus, AgilityBonus, DefenseBonus} with integer values.
-     *           Postcondition: returns a non-null array; one element per section.
+     * @implSpec
+     * Invariants:
+     * - Every section header corresponds to one {@code GameItem}.
+     * - All numeric fields default to 0 if missing or empty.
+     * Pre-conditions:
+     * - {@code file} is non-null, exists, and is a valid non-empty INI with item sections.
+     * Postconditions:
+     * - Returns a non-null array of {@code GameItem}.
+     * - Order of array matches order of sections in the file.
      */
     public static GameItem[] readItems(File file) {
-        Function<Integer, GameItem[]> makeArray = n -> new GameItem[n];
+        // Function to create the result array of correct type and size (e.g. new GameItem[n]).
+        Function<Integer, GameItem[]> makeArray = GameItem[]::new;
+        // Build one GameItem from (sectionName, properties)
         BiFunction<String, Map<String,String>, GameItem> elementFactory = (name, properties) -> {
-            int weight = parseIntOrDefault(properties.get("Weight"), 0);
-            int value = parseIntOrDefault(properties.get("Value"), 0);
-            int attackBonus = parseIntOrDefault(properties.get("AttackBonus"), 0);
-            int agilityBonus = parseIntOrDefault(properties.get("AgilityBonus"), 0);
-            int defenseBonus = parseIntOrDefault(properties.get("DefenseBonus"), 0);
+            int weight = parseIntOrDefault(properties.get("Weight"));
+            int value = parseIntOrDefault(properties.get("Value"));
+            int attackBonus = parseIntOrDefault(properties.get("AttackBonus"));
+            int agilityBonus = parseIntOrDefault(properties.get("AgilityBonus"));
+            int defenseBonus = parseIntOrDefault(properties.get("DefenseBonus"));
             return new GameItem(name, value, weight, attackBonus, agilityBonus, defenseBonus);
         };
+        // Delegate parsing and object creation to IniLoader
         return IniLoader.loadINI(file, makeArray, elementFactory);
     }
 
     /**
      * The same method as from Part 2, but now implemented using loadINI.
-     *
      * Examples:
      * - Given items: Sword(Attack+3), Cloak(Agility+2)
      *   Characters:
@@ -169,33 +228,47 @@ public final class IniLoader {
      *     new PlayerCharacter("Alice", 12, 5, 3, [Sword, Cloak])
      *     Alice.computeTotalStrength() == 12 + 3
      *     Alice.computeTotalDexterity() == 5 + 2
-     *
      * Design Strategy: Iteration
-     *
-     * Effects: reads the file; splits the inventory string by comma and resolves items by name.
+     * Effects:
+     * - Opens and reads the file (I/O).
+     * - Splits the inventory string, resolves each name to a {@code GameItem}.
+     * - Missing/unknown items are skipped silently.
+     * - May throw {@code RuntimeException} if reading/parsing fails.
      *
      * @param file     characters INI file
      * @param allItems all possible items that inventories may reference
      * @return array of {@code PlayerCharacter}
      * @throws RuntimeException if an I/O or parsing error occurs (wrapped)
-     * @implSpec Precondition: {@code allItems} contains every item name referenced by {@code Inventory}.
-     *           Precondition: each section contains integer keys {@code Strength, Dexterity, Fortitude};
-     *           if {@code Inventory} is present and non-empty, names are separated by literal commas (no trimming).
-     *           Postcondition: returns a non-null array; one element per section; the inventory array is a defensive copy.
+     * @implSpec
+     * Invariants:
+     * - Every section header corresponds to one {@code PlayerCharacter}.
+     * - Inventory entries reference existing item names (if not found, skipped).
+     * - Numeric attributes default to 0 if missing/empty.
+     * Pre-conditions:
+     * - {@code file} is non-null, exists, and is a valid non-empty characters INI.
+     * - {@code allItems} is non-null and contains all items that inventories may reference.
+     * Postconditions:
+     * - Returns a non-null array of {@code PlayerCharacter}.
+     * - Array order matches section order in file.
      */
     public static PlayerCharacter[] readCharacters(File file, GameItem[] allItems) {
+        // Step 1: Build a lookup map from item name to GameItem
         Map<String, GameItem> byName = new HashMap<>();
         for (GameItem item : allItems) {
             if (item != null && item.getName() != null){
                 byName.put(item.getName(), item);
             }
         }
-        Function<Integer, PlayerCharacter[]> makeArray = n -> new PlayerCharacter[n];
+        // Step 2: Array constructor function for PlayerCharacter[]
+        Function<Integer, PlayerCharacter[]> makeArray = PlayerCharacter[]::new;
+
+        // Step 3: Factory function to build one PlayerCharacter from section
         BiFunction<String, Map<String, String>, PlayerCharacter> elementFactory = (name, properties) -> {
-            int strength = parseIntOrDefault(properties.get("Strength"), 0);
-            int dexterity = parseIntOrDefault(properties.get("Dexterity"), 0);
-            int fortitude = parseIntOrDefault(properties.get("Fortitude"), 0);
+            int strength = parseIntOrDefault(properties.get("Strength"));
+            int dexterity = parseIntOrDefault(properties.get("Dexterity"));
+            int fortitude = parseIntOrDefault(properties.get("Fortitude"));
             String inventory = properties.get("Inventory");
+            // Build inventory list (resolve item names into GameItem objects)
             List<GameItem> bag = new ArrayList<>();
             if (inventory != null && !inventory.isEmpty()) {
                 for (String itemName : inventory.split(",")) {
@@ -210,7 +283,7 @@ public final class IniLoader {
             }
             return new PlayerCharacter(name, strength, dexterity, fortitude,bag.toArray(new GameItem[0]));
         };
+        // Step 4: Delegate parsing to IniLoader
         return IniLoader.loadINI(file, makeArray, elementFactory);
     }
 }
-

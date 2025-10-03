@@ -191,10 +191,7 @@ public class PartyTest {
         // Characters needed for name resolution
         PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
 
-        // Act
         Party[] parties = Party.loadParties(all, dir);
-
-        // Assert
         assertNotNull(parties);
         assertEquals(1, parties.length);
         Party p = parties[0];

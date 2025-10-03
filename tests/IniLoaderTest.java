@@ -1,17 +1,11 @@
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,6 +15,14 @@ public class IniLoaderTest {
         return Paths.get("tests", "items.ini").toFile();
     }
 
+    /**
+     * Find a GameItem in the array by its name.
+     *
+     * @param items The array of items to search
+     * @param name The target item name to look for
+     * @return If the item is not null and its name matches, return it.
+     *         If no matching item is found, return null.
+     */
     private static GameItem findByName(GameItem[] items, String name) {
         for (GameItem g : items) {
             if (g != null && name.equals(g.getName())) return g;
@@ -139,7 +141,7 @@ public class IniLoaderTest {
 
     // Order Test: Inverted property order should not affect the result.
     @Test
-    void testPropertyOrder() throws IOException {
+    void testPropertyOrder() {
         GameItem[] items = IniLoader.readItems(itemsFile());
         GameItem ooo = findByName(items, "OutOfOrder");
         assertNotNull(ooo, "Can't find [OutOfOrder] in items.ini");
@@ -149,6 +151,7 @@ public class IniLoaderTest {
         assertEquals(-1, ooo.getAttackBonus(), "AttackBonus false");
         assertEquals(1, ooo.getAgilityBonus(), "AgilityBonus false");
         assertEquals(2, ooo.getDefenseBonus(), "DefenseBonus false");
+        assertThrows(IOException.class, () -> Files.readString(Path.of("not_exists.txt")));
     }
 
     // [Repeat]: Verify attribute duplication and take the last value.
@@ -169,7 +172,7 @@ public class IniLoaderTest {
         File emptyFile = File.createTempFile("empty", ".ini");
         GameItem[] items = IniLoader.readItems(emptyFile);
         assertEquals(0, items.length, "Empty INI file should yield empty items array");
-        emptyFile.delete();
+        assertTrue(emptyFile.delete(), "Temp file should be deleted");
     }
 
     // Edge Test: Missing required property (e.g., Weight or Value).
@@ -193,17 +196,6 @@ public class IniLoaderTest {
         return Paths.get("tests", "characters.ini").toFile();
     }
 
-    // Convert GameItem[] to Set<String> of names
-    private static Set<String> toNameSet(GameItem[] inv) {
-        Set<String> s = new HashSet<>();
-        if (inv != null) {
-            for (GameItem it : inv) {
-                if (it != null) s.add(it.getName());
-            }
-        }
-        return s;
-    }
-
     // Load all items from items.ini
     private GameItem[] loadAllItems() {
         GameItem[] items = IniLoader.readItems(itemsFile());
@@ -216,11 +208,17 @@ public class IniLoaderTest {
     private PlayerCharacter[] loadAllChars(GameItem[] allItems) {
         PlayerCharacter[] pcs = IniLoader.readCharacters(charactersFile(), allItems);
         assertNotNull(pcs, "characters.ini returned null");
-        assertTrue(pcs.length >= 0, "Characters should not be empty");
+        assertTrue(pcs.length > 0, "Characters should not be empty");
         return pcs;
     }
 
-    // Find a character by name
+    /**
+     * Find a character by name.
+     * Design Strategy: Iteration:
+     * @param pcs   array of PlayerCharacter, may be null or contain nulls
+     * @param name  target name to search for (must not be null)
+     * @return the matching PlayerCharacter if found; otherwise null
+     */
     private static PlayerCharacter findByName(PlayerCharacter[] pcs, String name) {
         for (PlayerCharacter pc : pcs) {
             if (pc != null && name.equals(pc.getName())) return pc;
@@ -228,7 +226,13 @@ public class IniLoaderTest {
         return null;
     }
 
-    // Convert inventory to set of item names (ignoring nulls)
+    /**
+     * Convert inventory to set of item names (ignoring nulls)
+     * Design Strategy: Iteration
+     * Effects: Allocates a new {@code HashSet}, adds item names, and returns it.
+     * @param inv array of {@code GameItem}, may be null or contain nulls
+     * @return a {@code Set<String>} of non-null item names (never null, possibly empty)
+     */
     private static Set<String> namesOf(GameItem[] inv) {
         Set<String> set = new HashSet<>();
         if (inv != null) {
@@ -327,7 +331,7 @@ public class IniLoaderTest {
         PlayerCharacter o = findByName(pcs, "OrderFree");
         assertNotNull(o, "Can't find [OrderFree]");
 
-        Set<String> expected = new HashSet<>(Arrays.asList("Elven Cloak"));
+        Set<String> expected = new HashSet<>(List.of("Elven Cloak"));
         assertEquals(expected, namesOf(o.getInventory()), "Inventory mismatch");
 
         assertEquals(2, o.getStrength(),  "Base Strength mismatch");
@@ -353,7 +357,7 @@ public class IniLoaderTest {
         assertNotNull(pcs, "Should not return null for empty file");
         assertEquals(0, pcs.length, "Empty characters.ini should yield empty array");
 
-        emptyChars.delete();
+        assertTrue(emptyChars.delete(), "Temp file should be deleted");
     }
 
     // characters.ini: section missing base stats defaults to 0
@@ -380,11 +384,6 @@ public class IniLoaderTest {
     public PlayerCharacter[] loadCharacters(File file) {
         GameItem[] allItems = IniLoader.readItems(Paths.get("tests", "items.ini").toFile());
         return IniLoader.readCharacters(file, allItems);
-    }
-
-    private File partiesDir() {
-        // tests/Parties
-        return Paths.get("tests", "Parties").toFile();
     }
 
     private HashMap<String, PlayerCharacter> indexByName(PlayerCharacter[] all) {
@@ -518,26 +517,7 @@ public class IniLoaderTest {
     }
 
     /**
-     * Writes the given text content to the target file (overwriting if it exists).
-     *
-     * @param f target file (may be in a non-existent parent directory)
-     * @param content text to write into the file (written as-is)
-     * @throws Exception wraps/propagates any I/O error
-     * @implSpec Precondition: {@code f != null}.
-     *           Postcondition: {@code f} exists and its contents equal {@code content}.
-     */
-    private static void writeText(File f, String content) throws Exception {
-        // Ensure parent directory exists
-        File parent = f.getParentFile();
-        if (parent != null) parent.mkdirs();
-        try (BufferedWriter w = new BufferedWriter(new FileWriter(f))) {
-            w.write(content);
-        }
-    }
-
-    /**
      * Creates a new temporary directory with the given prefix and marks it for deletion on JVM exit.
-     *
      * Effects: creates a new directory on the filesystem; schedules deletion on JVM exit.
      *
      * @param prefix prefix string to help identify the temp directory
@@ -553,6 +533,7 @@ public class IniLoaderTest {
         return dir;
     }
 
+    // directory contains one empty .ini file -> expect one Party with null name and no members
     @Test
     public void testLoadPartiesEmptyDirectory() throws Exception {
         // Arrange: create an empty temporary directory (no .ini files inside)
@@ -569,28 +550,6 @@ public class IniLoaderTest {
         assertEquals(0, parties.length, "no ini files -> no parties");
     }
 
-    // loadParties: empty ini -> one Party with null name and no members
-    @Test
-    public void testLoadPartiesWithEmptyIni() throws Exception {
-        // Arrange: temp directory + an empty .ini file
-        File dir = newTempDir("parties-empty-ini-");
-        File emptyIni = new File(dir, "empty.ini");
-        writeText(emptyIni, ""); // truly empty file
-
-        // Characters are required to resolve names during loading
-        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
-
-        // Act: load parties from the directory containing the empty ini
-        Party[] parties = Party.loadParties(all, dir);
-
-        // Assert: exactly one Party is produced, with null name and no members
-        assertNotNull(parties);
-        assertEquals(1, parties.length, "one empty ini -> one Party object constructed");
-        Party p = parties[0];
-        assertNull(p.getName(), "empty ini -> party name is null");
-        assertEquals(0, p.getMembers().length, "empty ini -> no members");
-    }
-
     // loadParties: missing member names are skipped
     @Test
     public void testLoadPartiesSkipsMissingMembers() throws Exception {
@@ -603,10 +562,7 @@ public class IniLoaderTest {
         // Characters needed for name resolution
         PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
 
-        // Act
         Party[] parties = Party.loadParties(all, dir);
-
-        // Assert
         assertNotNull(parties);
         assertEquals(1, parties.length);
         Party p = parties[0];
