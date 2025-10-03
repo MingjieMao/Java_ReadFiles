@@ -1,7 +1,11 @@
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -17,7 +21,7 @@ public class PartyTest {
     }
 
     private File partiesDir() {
-        // tests/Parties 目录（相对项目根目录）
+        // tests/Parties
         return Paths.get("tests", "Parties").toFile();
     }
 
@@ -135,7 +139,6 @@ public class PartyTest {
         }
     }
 
-
     @Test
     public void testStorePartyNoThrowForNow() {
         // Load characters and build a lookup map
@@ -152,4 +155,104 @@ public class PartyTest {
         assertDoesNotThrow(() -> p.storeParty(new File("out")));
     }
 
+    /**
+     * Writes the given text content to the target file (overwriting if it exists).
+     *
+     * @param f target file (may be in a non-existent parent directory)
+     * @param content text to write into the file (written as-is)
+     * @throws Exception wraps/propagates any I/O error
+     * @implSpec Precondition: {@code f != null}.
+     *           Postcondition: {@code f} exists and its contents equal {@code content}.
+     */
+    private static void writeText(File f, String content) throws Exception {
+        // Ensure parent directory exists
+        File parent = f.getParentFile();
+        if (parent != null) parent.mkdirs();
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(f))) {
+            w.write(content);
+        }
+    }
+
+    /**
+     * Creates a new temporary directory with the given prefix and marks it for deletion on JVM exit.
+     *
+     * Effects: creates a new directory on the filesystem; schedules deletion on JVM exit.
+     *
+     * @param prefix prefix string to help identify the temp directory
+     * @return a {@link File} pointing to the newly created temporary directory
+     * @throws Exception if the directory cannot be created
+     * @implSpec Precondition: {@code prefix != null}.
+     *           Postcondition: returned directory exists and is empty.
+     */
+    private static File newTempDir(String prefix) throws Exception {
+        Path p = Files.createTempDirectory(prefix);
+        File dir = p.toFile();
+        dir.deleteOnExit();
+        return dir;
+    }
+
+    @Test
+    public void testLoadPartiesEmptyDirectory() throws Exception {
+        // Arrange: create an empty temporary directory (no .ini files inside)
+        File emptyDir = newTempDir("parties-empty-");
+
+        // Load all characters from the existing test file (needed by loadParties)
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+
+        // Act: load parties from the empty directory
+        Party[] parties = Party.loadParties(all, emptyDir);
+
+        // Assert: result is a non-null empty array
+        assertNotNull(parties, "should not be null even for empty dir");
+        assertEquals(0, parties.length, "no ini files -> no parties");
+    }
+
+    // loadParties: empty ini -> one Party with null name and no members
+    @Test
+    public void testLoadPartiesWithEmptyIni() throws Exception {
+        // Arrange: temp directory + an empty .ini file
+        File dir = newTempDir("parties-empty-ini-");
+        File emptyIni = new File(dir, "empty.ini");
+        writeText(emptyIni, ""); // truly empty file
+
+        // Characters are required to resolve names during loading
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+
+        // Act: load parties from the directory containing the empty ini
+        Party[] parties = Party.loadParties(all, dir);
+
+        // Assert: exactly one Party is produced, with null name and no members
+        assertNotNull(parties);
+        assertEquals(1, parties.length, "one empty ini -> one Party object constructed");
+        Party p = parties[0];
+        assertNull(p.getName(), "empty ini -> party name is null");
+        assertEquals(0, p.getMembers().length, "empty ini -> no members");
+    }
+
+    // loadParties: missing member names are skipped
+    @Test
+    public void testLoadPartiesSkipsMissingMembers() throws Exception {
+        // Arrange: temp directory; place a prepared ini (with one missing member) into the directory
+        File dir = newTempDir("parties-missing-members-");
+        Path src = Paths.get("tests", "Parties", "mix.ini");
+        Path dst = dir.toPath().resolve("mix.ini");
+        Files.copy(src, dst);
+
+        // Characters needed for name resolution
+        PlayerCharacter[] all = loadCharacters(Paths.get("tests", "characters.ini").toFile());
+
+        // Act
+        Party[] parties = Party.loadParties(all, dir);
+
+        // Assert
+        assertNotNull(parties);
+        assertEquals(1, parties.length);
+        Party p = parties[0];
+        assertEquals("mix", p.getName());
+
+        PlayerCharacter[] members = p.getMembers();
+        assertEquals(2, members.length); // the missing member was skipped
+        assertEquals("Gimli",   members[0].getName());
+        assertEquals("Legolas", members[1].getName());
+    }
 }
