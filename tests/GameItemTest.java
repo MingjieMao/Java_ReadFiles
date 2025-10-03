@@ -2,6 +2,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,6 +12,13 @@ public class GameItemTest {
     // return tests/items.ini
     private File itemsFile() {
         return Paths.get("tests", "items.ini").toFile();
+    }
+
+    private static GameItem findByName(GameItem[] items, String name) {
+        for (GameItem g : items) {
+            if (g != null && name.equals(g.getName())) return g;
+        }
+        return null;
     }
 
     //Getters: all fields must equal the given constructor args.
@@ -106,13 +114,6 @@ public class GameItemTest {
         assertEquals(5, ws.getDefenseBonus());
     }
 
-    private static GameItem findByName(GameItem[] items, String name) {
-        for (GameItem g : items) {
-            if (g != null && name.equals(g.getName())) return g;
-        }
-        return null;
-    }
-
     // Edge Test: Validate unknown properties are ignored ([UnknownPropertiesAreIgnored]).
     @Test
     void testUnknownPropertiesAreIgnored() {
@@ -151,5 +152,26 @@ public class GameItemTest {
         assertEquals(4, repeat.getAttackBonus(), "AttackBonus mismatch (should take the last one: 6)");
         assertEquals(1, repeat.getAgilityBonus(), "AgilityBonus mismatch");
         assertEquals(0, repeat.getDefenseBonus(), "DefenseBonus mismatch");
+    }
+
+    @Test
+    void testParse_emptyFile() throws IOException {
+        File emptyFile = File.createTempFile("empty", ".ini");
+        GameItem[] items = GameItem.readItems(emptyFile);
+        assertEquals(0, items.length, "Empty INI file should yield empty items array");
+        emptyFile.delete();
+    }
+
+    // Edge Test: Missing required property (e.g., Weight or Value).
+    @Test
+    void testParse_missingValueOrWeight_fromFile() {
+        GameItem[] items = GameItem.readItems(itemsFile());
+        GameItem mf = findByName(items, "MissingFields");
+        assertNotNull(mf, "Can't find [MissingFields] in items.ini");
+        assertEquals(0, mf.getValue(), "Missing Value should default to 0");
+        assertEquals(0, mf.getWeight(), "Missing Weight should default to 0");
+        assertEquals(5, mf.getAttackBonus(), "AttackBonus should be parsed");
+        assertEquals(2, mf.getAgilityBonus(), "AgilityBonus should be parsed");
+        assertEquals(0, mf.getDefenseBonus(), "DefenseBonus should default to 0");
     }
 }

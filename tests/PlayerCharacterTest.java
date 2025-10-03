@@ -2,6 +2,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -165,4 +167,41 @@ public class PlayerCharacterTest {
         assertEquals(6, o.computeTotalDexterity(), "Total Dexterity mismatch");
         assertEquals(5, o.computeTotalFortitude(), "Total Fortitude mismatch");
     }
+
+    // Edge: empty characters file -> empty array
+    @Test
+    @DisplayName("readCharacters: empty file yields empty array")
+    void testReadCharacters_emptyFile() throws IOException {
+        // Prepare items first (characters parsing depends on items)
+        GameItem[] allItems = loadAllItems();
+
+        // Create a temporary empty characters.ini
+        File emptyChars = File.createTempFile("charactersEmpty", ".ini");
+        Files.writeString(emptyChars.toPath(), "");  // empty content
+
+        PlayerCharacter[] pcs = PlayerCharacter.readCharacters(emptyChars, allItems);
+        assertNotNull(pcs, "Should not return null for empty file");
+        assertEquals(0, pcs.length, "Empty characters.ini should yield empty array");
+
+        emptyChars.delete();
+    }
+
+    @Test
+    @DisplayName("characters.ini: section missing base stats defaults to 0")
+    void testCharacters_missingBaseStats_fromFile() {
+        GameItem[] allItems = loadAllItems();
+        PlayerCharacter[] pcs = loadAllChars(allItems);
+        PlayerCharacter nb = findByName(pcs, "NoBase");
+        assertNotNull(nb, "Can't find [NoBase] in characters.ini");
+
+        // Missing base stats → default to 0
+        assertEquals(0, nb.getStrength(),  "Missing Strength should default to 0");
+        assertEquals(0, nb.getDexterity(), "Missing Dexterity should default to 0");
+        assertEquals(0, nb.getFortitude(), "Missing Fortitude should default to 0");
+
+        // Inventory should still be parsed correctly
+        var expectedInv = new java.util.HashSet<>(java.util.Arrays.asList("Health Potion", "Wooden Shield"));
+        assertEquals(expectedInv, namesOf(nb.getInventory()), "Inventory should be parsed even when base stats are missing");
+    }
+
 }
