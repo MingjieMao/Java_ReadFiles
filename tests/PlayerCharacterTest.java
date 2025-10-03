@@ -170,7 +170,6 @@ public class PlayerCharacterTest {
 
     // Edge: empty characters file -> empty array
     @Test
-    @DisplayName("readCharacters: empty file yields empty array")
     void testReadCharacters_emptyFile() throws IOException {
         // Prepare items first (characters parsing depends on items)
         GameItem[] allItems = loadAllItems();
@@ -186,8 +185,8 @@ public class PlayerCharacterTest {
         emptyChars.delete();
     }
 
+    // characters.ini: section missing base stats defaults to 0
     @Test
-    @DisplayName("characters.ini: section missing base stats defaults to 0")
     void testCharacters_missingBaseStats_fromFile() {
         GameItem[] allItems = loadAllItems();
         PlayerCharacter[] pcs = loadAllChars(allItems);
@@ -201,7 +200,8 @@ public class PlayerCharacterTest {
 
         // Inventory should still be parsed correctly
         var expectedInv = new java.util.HashSet<>(java.util.Arrays.asList("Health Potion", "Wooden Shield"));
-        assertEquals(expectedInv, namesOf(nb.getInventory()), "Inventory should be parsed even when base stats are missing");
+        assertEquals(expectedInv, namesOf(nb.getInventory()),
+                "Inventory should be parsed even when base stats are missing");
     }
 
 }

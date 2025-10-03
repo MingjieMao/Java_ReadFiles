@@ -28,6 +28,9 @@ public class IniLoaderTest {
         return null;
     }
 
+
+    // Part 1
+
     //Getters: all fields must equal the given constructor args.
     @Test
     public void testGetter_basic() {
@@ -338,7 +341,6 @@ public class IniLoaderTest {
 
     // Edge: empty characters file -> empty array
     @Test
-    @DisplayName("readCharacters: empty file yields empty array")
     void testReadCharacters_emptyFile() throws IOException {
         // Prepare items first (characters parsing depends on items)
         GameItem[] allItems = loadAllItems();
@@ -354,8 +356,8 @@ public class IniLoaderTest {
         emptyChars.delete();
     }
 
+    // characters.ini: section missing base stats defaults to 0
     @Test
-    @DisplayName("characters.ini: section missing base stats defaults to 0")
     void testCharacters_missingBaseStats_fromFile() {
         GameItem[] allItems = loadAllItems();
         PlayerCharacter[] pcs = loadAllChars(allItems);
