@@ -29,7 +29,7 @@ import java.util.function.Function;
  * Pre-conditions:
  * - Input file must exist and be readable.
  * - Factory function must accept valid section names and maps.
- * Postconditions:
+ * Post-conditions:
  * - Returns a non-null array of T constructed from all sections.
  * - Array length equals number of `[Section]` headers encountered.
  */
@@ -66,7 +66,7 @@ public final class IniLoader {
      * Pre-conditions:
      * - {@code file} must be non-null and point to an existing readable file.
      * - {@code makeArray} and {@code elementFactory} must be non-null.
-     * Postconditions:
+     * Post-conditions:
      * - Returns an array of size == number of section headers encountered.
      * - Each element corresponds to one header and its associated key-value pairs.
      */
@@ -113,9 +113,9 @@ public final class IniLoader {
      * Invariant:
      * - {@code state.currentName} is the most recent section header (if any);
      * - {@code state.properties} stores key→value pairs for that section.
-     * Precondition:
+     * Pre-condition:
      * {@code reader} and {@code state} are non-null.
-     * Postcondition:
+     * Post-condition:
      * - At end-of-file, the last section is not automatically committed;
      * - caller (e.g., {@code loadINI}) must call {@code state.commitSection()}.
      */
@@ -158,7 +158,7 @@ public final class IniLoader {
      * - {@code results} grows monotonically (elements only added, never removed).
      * Pre-conditions:
      * - {@code elementFactory} must be non-null and accept valid input.
-     * Postconditions:
+     * Post-conditions:
      * - After {@code commitSection()}, if {@code currentName != null}, one new
      *   element is appended to {@code results} and state resets.
      */
@@ -179,8 +179,8 @@ public final class IniLoader {
          * - Resets {@code currentName = null} and {@code properties = new LinkedHashMap<>}.
          *
          * @implSpec
-         * - Precondition: {@code elementFactory} must not be null.
-         * - Postcondition: If {@code currentName} was non-null, then
+         * - Pre-condition: {@code elementFactory} must not be null.
+         * - Post-condition: If {@code currentName} was non-null, then
          *   {@code results.size()} increases by 1.
          */
         void commitSection() {
@@ -242,7 +242,7 @@ public final class IniLoader {
      * - All numeric fields default to 0 if missing or empty.
      * Pre-conditions:
      * - {@code file} is non-null, exists, and is a valid non-empty INI with item sections.
-     * Postconditions:
+     * Post-conditions:
      * - Returns a non-null array of {@code GameItem}.
      * - Order of array matches order of sections in the file.
      */
@@ -295,7 +295,7 @@ public final class IniLoader {
      * Pre-conditions:
      * - {@code file} is non-null, exists, and is a valid non-empty characters INI.
      * - {@code allItems} is non-null and contains all items that inventories may reference.
-     * Postconditions:
+     * Post-conditions:
      * - Returns a non-null array of {@code PlayerCharacter}.
      * - Array order matches section order in file.
      */

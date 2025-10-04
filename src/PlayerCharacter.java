@@ -48,7 +48,7 @@ public final class PlayerCharacter {
      * @param dexterity base Dexterity (e.g., 5)
      * @param fortitude base Fortitude (e.g., 3)
      * @param inventory array of items the character holds
-     * @implSpec Post: fields equal to provided arguments.
+     * @implSpec Post-condition: fields equal to provided arguments.
      */
     public PlayerCharacter(String name, int strength, int dexterity,
                                   int fortitude, GameItem[] inventory) {
@@ -225,7 +225,7 @@ public final class PlayerCharacter {
      * Invariants: The returned PlayerCharacter is non-null;
      *             its inventory array is non-null and contains no null elements.
      * Pre-conditions: name != null, itemLookup != null
-     * Postconditions:
+     * Post-conditions:
      * - result.getName().equals(name)
      * - result.getStrength() == strength, result.getDexterity() == dexterity, result.getFortitude() == fortitude
      * - result.getInventory() preserves the order of valid item names from inventoryString after trimming,
@@ -279,7 +279,7 @@ public final class PlayerCharacter {
      * Pre-conditions:
      * - file != null and is a readable character INI file.
      * - allItems != null and contains a unique-name {@code GameItem} for every inventory token in the file.
-     * Postconditions:
+     * Post-conditions:
      * - The result length equals the number of sections in the file, in the same order.
      * - For each section, the corresponding PlayerCharacter has the parsed name/strength/dexterity/fortitude.
      */
@@ -326,7 +326,7 @@ public final class PlayerCharacter {
      * - {@code name} may be null if no section header has been parsed yet.
      * - {@code inventoryString} may be null if no Inventory line has been parsed yet.
      * Pre-conditions: None.
-     * Postconditions:
+     * Post-conditions:
      * - After calling {@link #resetStats()}, {@code strength}, {@code dexterity}, {@code fortitude} are 0.
      * - {@code name} and {@code inventoryString} remain unchanged by reset.
      */
@@ -341,9 +341,11 @@ public final class PlayerCharacter {
          * @implSpec
          * Invariants: After reset, strength = dexterity = fortitude = 0.
          * Pre-conditions: None.
-         * Postconditions: Only numeric fields are modified; {@code name} and {@code inventoryString} remain unchanged.
+         * Post-conditions: Only numeric fields are modified; {@code name} and {@code inventoryString} remain unchanged.
          */
-        void resetStats() { strength = dexterity = fortitude = 0; }
+        void resetStats() {
+            strength = dexterity = fortitude = 0;
+        }
     }
 
     /**
@@ -380,7 +382,7 @@ public final class PlayerCharacter {
      * Pre-conditions:
      * - {@code line}, {@code characters}, {@code itemLookup}, and {@code props} must all be non-null.
      * - {@code line} must be either a valid section header ("[Name]") or contain "key=value".
-     * Postconditions:
+     * Post-conditions:
      * - If {@code line} is a new section header:
      *   If {@code props.name} was non-null, one PlayerCharacter is appended to {@code characters}.
      *   {@code props.name} updated, stats reset, inventoryString set null.

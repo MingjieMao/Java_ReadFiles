@@ -26,7 +26,7 @@ import java.util.*;
  * - {@code members} is non-null, preserves insertion order, and contains no null elements.
  * Pre-conditions:
  * - When constructing a Party, caller must provide a valid {@code name} and a non-null {@code List<PlayerCharacter>}.
- * Postconditions:
+ * Post-conditions:
  * - A Party instance is immutable after construction (fields are {@code final}).
  * - Queries such as {@code getName()}, {@code getMembers()},
  *   and combined-stat methods always return consistent values derived from construction arguments.
@@ -44,7 +44,7 @@ public class Party {
      * Design Strategy: Simple Expression (field assignment).
      *
      * @param name party name (e.g., "fellowship").
-     * @implSpec Postcondition: name = null, members = null
+     * @implSpec Post-condition: name = null, members = null
      */
     public Party(String name) {
         this.name = name;
@@ -85,7 +85,7 @@ public class Party {
      * Design Strategy: Simple Expression (List -> array copy).
      *
      * @return snapshot array of members
-     * @implSpec Postcondition: returns a new array (defensive copy);
+     * @implSpec Post-condition: returns a new array (defensive copy);
      */
     public PlayerCharacter[] getMembers() {
         return members.toArray(new PlayerCharacter[0]);
@@ -103,7 +103,7 @@ public class Party {
      * @implSpec
      * Invariants: {@code members} is never null, and contains only non-null PlayerCharacters.
      * Pre-conditions: Party must have been constructed with a valid members list.
-     * Postconditions:
+     * Post-conditions:
      *  - Result equals the sum of {@code computeTotalStrength()} of all members.
      *  - If {@code members} is empty, result == 0.
      */
@@ -137,10 +137,10 @@ public class Party {
      * @implSpec
      * Invariants: {@code members} is never null and contains no duplicates.
      * Pre-conditions: {@code character} must not be null.
-     * Postcondition:
+     * Post-condition:
      * - If {@code character} was not already in {@code members}, it is appended at the end.
      * - If {@code character} was already present, list remains unchanged.
-     *  - Size of {@code members} increases by at most 1.
+     * - Size of {@code members} increases by at most 1.
      */
     public void addMember(PlayerCharacter character) {
         if (!members.contains(character)) {
@@ -171,7 +171,7 @@ public class Party {
      * @implSpec
      * Invariants: {@code members} is never null; contains no duplicate references.
      * Pre-conditions: None beyond non-null {@code members}.
-     * Postcondition:
+     * Post-condition:
      *  - If {@code character} was present, it is removed once, and size decreases by 1.
      *  - If {@code character} was not present, no change occurs.
      *  - {@code members} remains consistent (no nulls introduced).
@@ -211,7 +211,7 @@ public class Party {
      * - {@code members} is non-null, contains no nulls.
      * Pre-conditions:
      * - {@code directory} must be a valid writable directory, not null.
-     * Postconditions:
+     * Post-conditions:
      * - Creates/overwrites file named {@code name + ".ini"} inside {@code directory}.
      * - File content reflects current party state (name and ordered members).
      */
@@ -280,7 +280,7 @@ public class Party {
      * Pre-conditions:
      * - {@code directory} is non-null.
      * - Every {@code *.ini} file in {@code directory} is non-empty, valid, and refers only to known characters.
-     * Postconditions:
+     * Post-conditions:
      * - Returns a Party[] whose length equals the number of *.ini files.
      * - Each Party preserves the order of members according to numeric keys in its INI.
      */
@@ -337,7 +337,7 @@ public class Party {
      * Pre-conditions:
      * - {@code ini} is a valid, non-empty Party INI file.
      * - {@code byName} maps every referenced member name to a PlayerCharacter.
-     * Postconditions:
+     * Post-conditions:
      * - Constructs and returns a Party whose name equals the [Party] Name.
      * - Members are inserted in ascending numeric key order (0,1,2,…).
      */
@@ -394,7 +394,7 @@ public class Party {
      * - {@code holder} remains non-null after method execution.
      * Precondition:
      * - {@code line != null}, {@code holder != null}.
-     * Postconditions:
+     * Post-conditions:
      * - If {@code line} is a section header, updates {@code holder.currentSection}.
      * - If {@code line} is "Name=..." in [Party], sets {@code holder.partyNameFromFile}.
      * - If {@code line} is "i=name" in [Members], adds entry to {@code holder.memberMap}.
@@ -450,7 +450,7 @@ public class Party {
      * - If {@code currentSection == "Members"} and line is "i=Name", then {@code memberMap.get(i).equals(Name)}.
      * Pre-conditions:
      * - Used only during Party INI parsing; not exposed outside loader.
-     * Postconditions:
+     * Post-conditions:
      * - After parsing completes, {@code partyNameFromFile} holds the Party name,
      *   and {@code memberMap} holds the index-to-name mapping of all members.
      */

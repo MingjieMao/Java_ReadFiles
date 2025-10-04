@@ -71,7 +71,6 @@ public class GameItem {
      *
      * @return item name
      */
-
     public String getName() {
         return name;
     }
@@ -169,8 +168,8 @@ public class GameItem {
      *
      * @param file The INI file to read from.
      * @return An array of GameItem objects found in the file.
-     * @implSpec Pre: file is a valid INI per assignment description (non-empty, well-formed).
-     * @implSpec Post: returns an array containing one GameItem per section encountered.
+     * @implSpec Pre-condition: file is a valid INI per assignment description (non-empty, well-formed).
+     * @implSpec Post-condition: returns an array containing one GameItem per section encountered.
      * @throws RuntimeException if an IOException or a parsing error occurs.
      */
     public static GameItem[] readItems(File file) {
@@ -198,6 +197,7 @@ public class GameItem {
      * This avoids passing multiple separate mutable variables through method parameters.
      * Examples:
      * - ItemProps(name="Elven Cloak", value=100, Weight=3, AttackBonus=10, AgilityBonus=3,  DefenseBonus=1)
+     * Design Strategy: Simple Expression.
      *
      * @implSpec Invariants:
      * 1. If name is not null, the remaining fields hold the stats for that item.
@@ -211,6 +211,12 @@ public class GameItem {
         int agilityBonus = 0;
         int defenseBonus = 0;
 
+        /**
+         * Resets all numeric stats to {@code 0} while keeping {@link #name} unchanged.
+         *
+         * @implSpec Postconditions:
+         * - {@code value == 0 && weight == 0 && attackBonus == 0 && agilityBonus == 0 && defenseBonus == 0}</li>
+         */
         void resetStats() {
             value = weight = attackBonus = agilityBonus = defenseBonus = 0;
         }
